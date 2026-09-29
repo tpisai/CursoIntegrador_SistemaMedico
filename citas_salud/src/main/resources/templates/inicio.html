@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sistema de Citas</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+        }
+
+        .contenedor {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .seccion {
+            background: white;
+            padding: 20px;
+            margin-top: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #2563eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .vacio {
+            color: #777;
+            font-style: italic;
+        }
+        .titulo-seccion {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .titulo-seccion button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .titulo-seccion button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .formulario {
+            background-color: #f8fafc;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+
+        .formulario input {
+            padding: 10px;
+            width: 250px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .formulario button {
+            padding: 10px 15px;
+            margin-left: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .formulario button[type="submit"] {
+            background-color: #16a34a;
+            color: white;
+        }
+
+        .formulario button[type="button"] {
+            background-color: #dc2626;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <h1>Sistema Web de Gestión de Citas</h1>
+
+    <!-- ROLES -->
+    <div class="seccion">
+
+        <div class="titulo-seccion">
+            <h2>Roles</h2>
+
+            <button onclick="mostrarFormularioRol()">
+                + Agregar
+            </button>
+        </div>
+
+        <!-- FORMULARIO -->
+        <div id="formularioRol" class="formulario" style="display: none;">
+
+            <form action="/roles/agregar" method="post">
+
+                <input
+                        type="text"
+                        name="nombre"
+                        placeholder="Nombre del rol"
+                        required>
+
+                <button type="submit">
+                    Guardar
+                </button>
+
+                <button
+                        type="button"
+                        onclick="ocultarFormularioRol()">
+                    Cancelar
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- TABLA -->
+        <table>
+
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            <tr th:each="rol : ${roles}">
+
+                <td th:text="${rol.idRol}"></td>
+
+                <td th:text="${rol.nombre}"></td>
+
+            </tr>
+
+            <tr th:if="${#lists.isEmpty(roles)}">
+
+                <td colspan="2" class="vacio">
+                    No existen roles registrados.
+                </td>
+
+            </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- ESPECIALIDADES -->
+    <div class="seccion">
+
+        <h2>Especialidades</h2>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            <tr th:each="especialidad : ${especialidades}">
+                <td th:text="${especialidad.idEspecialidad}"></td>
+                <td th:text="${especialidad.nombre}"></td>
+            </tr>
+
+            <tr th:if="${#lists.isEmpty(especialidades)}">
+                <td colspan="2" class="vacio">
+                    No existen especialidades registradas.
+                </td>
+            </tr>
+
+            </tbody>
+        </table>
+
+    </div>
+
+
+    <!-- CONSULTORIOS -->
+    <div class="seccion">
+
+        <h2>Consultorios</h2>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Número</th>
+                <th>Piso</th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            <tr th:each="consultorio : ${consultorios}">
+                <td th:text="${consultorio.idConsultorio}"></td>
+                <td th:text="${consultorio.numero}"></td>
+                <td th:text="${consultorio.piso}"></td>
+            </tr>
+
+            <tr th:if="${#lists.isEmpty(consultorios)}">
+                <td colspan="3" class="vacio">
+                    No existen consultorios registrados.
+                </td>
+            </tr>
+
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+<script>
+
+    function mostrarFormularioRol() {
+        document.getElementById("formularioRol").style.display = "block";
+    }
+
+    function ocultarFormularioRol() {
+        document.getElementById("formularioRol").style.display = "none";
+    }
+
+</script>
+</body>
+</html>

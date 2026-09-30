@@ -787,6 +787,35 @@ CREATE TABLE auditoria (
         )
 );
 
+-- ============================================================
+-- NOTIFICACIONES
+-- Registra todas las notificaciones que se le envia a los 
+-- usuarios
+-- ============================================================
+CREATE TABLE notificacion (
+    id_notificacion SERIAL PRIMARY KEY,
+    id_usuario INTEGER NOT NULL,
+    titulo VARCHAR(150) NOT NULL,
+    mensaje TEXT NOT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    leida BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha_envio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_notificacion_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuario(id_usuario),
+
+    CONSTRAINT chk_notificacion_tipo
+        CHECK (
+            tipo IN (
+                'CITA',
+                'SOLICITUD',
+                'CAMPANIA',
+                'SISTEMA',
+                'RECORDATORIO'
+            )
+        )
+);
 
 -- ============================================================
 -- ÍNDICES
@@ -944,6 +973,17 @@ CREATE INDEX idx_auditoria_entidad
 CREATE INDEX idx_auditoria_fecha
     ON auditoria(fecha);
 
+-- ------------------------------------------------------------
+-- NOTIFICACIONES
+-- ------------------------------------------------------------
+CREATE INDEX idx_notificacion_usuario
+    ON notificacion(id_usuario);
+
+CREATE INDEX idx_notificacion_leida
+    ON notificacion(id_usuario, leida);
+
+CREATE INDEX idx_notificacion_fecha
+    ON notificacion(fecha_envio);
 
 -- ============================================================
 -- FIN DEL SCRIPT

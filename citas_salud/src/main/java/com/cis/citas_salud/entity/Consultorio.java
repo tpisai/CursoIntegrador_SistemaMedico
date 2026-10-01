@@ -11,18 +11,34 @@ public class Consultorio {
     @Column(name = "id_consultorio")
     private Integer idConsultorio;
 
-    @Column(name = "numero", nullable = false, unique = true)
-    private String numero;
+    @Column(name = "nombre", nullable = false)
+    private String nombre;
+
+    @Column(name = "zona")
+    private String zona;
 
     @Column(name = "piso")
-    private Integer piso;
+    private String piso;
+
+    @Column(name = "numero")
+    private String numero;
+
+    @Column(name = "estado", nullable = false)
+    private String estado = "ACTIVO";
 
     public Consultorio() {
     }
 
-    public Consultorio(String numero, Integer piso) {
-        this.numero = numero;
+    public Consultorio(String nombre, String zona, String piso, String numero) {
+        this.nombre = nombre;
+        this.zona = zona;
         this.piso = piso;
+        this.numero = numero;
+    }
+
+    /** Texto para mostrar, p. ej. "Módulo A · Consultorio 3". */
+    public String getUbicacion() {
+        return zona == null || zona.isBlank() ? nombre : zona + " · " + nombre;
     }
 
     public Integer getIdConsultorio() {
@@ -33,6 +49,30 @@ public class Consultorio {
         this.idConsultorio = idConsultorio;
     }
 
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public String getZona() {
+        return zona;
+    }
+
+    public void setZona(String zona) {
+        this.zona = zona;
+    }
+
+    public String getPiso() {
+        return piso;
+    }
+
+    public void setPiso(String piso) {
+        this.piso = piso;
+    }
+
     public String getNumero() {
         return numero;
     }
@@ -41,11 +81,11 @@ public class Consultorio {
         this.numero = numero;
     }
 
-    public Integer getPiso() {
-        return piso;
+    public String getEstado() {
+        return estado;
     }
 
-    public void setPiso(Integer piso) {
-        this.piso = piso;
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 }

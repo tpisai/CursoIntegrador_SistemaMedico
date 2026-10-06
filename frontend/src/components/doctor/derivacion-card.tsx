@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { CampoSelect } from "@/components/doctor/campo-select"
+import { CampoSelect } from "@/components/portal/campo-select"
 import { ESPECIALIDADES_DERIVACION, ESTABLECIMIENTOS } from "@/components/doctor/opciones-derivacion"
 import { useCitasProximas } from "@/hooks/use-doctor"
 import { rutasDoctor, solicitarDerivacion } from "@/lib/api/doctor"

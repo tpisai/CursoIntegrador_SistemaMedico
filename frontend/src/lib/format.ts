@@ -53,6 +53,12 @@ export function formatFechaLarga(fecha: string): string {
   return `${dias[d.getDay()]} ${d.getDate()} de ${MESES_LARGOS[d.getMonth()].toLowerCase()}`
 }
 
+/** "Sáb 10 oct · 09:00" o "Lun 5 oct al Vie 9 oct" (fechas de una campaña). */
+export function formatRango(desde: string, hasta: string, hora?: string | null): string {
+  const fechas = desde === hasta ? formatDiaCorto(desde) : `${formatDiaCorto(desde)} al ${formatDiaCorto(hasta)}`
+  return hora ? `${fechas} · ${hora}` : fechas
+}
+
 /** "12 ago 2026" */
 export function formatFecha(fecha: string): string {
   const d = parseFecha(fecha)

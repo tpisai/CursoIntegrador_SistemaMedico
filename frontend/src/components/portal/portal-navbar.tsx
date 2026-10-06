@@ -59,13 +59,14 @@ export function PortalNavbar({
 
   return (
     <header className="sticky top-0 z-40 bg-brand-strong text-brand-foreground">
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-6 px-4 sm:px-8 lg:h-[72px] lg:gap-8">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:gap-6 sm:px-8 lg:h-[72px] lg:gap-8">
         <div className="flex items-center gap-3">
           <Link href={enlaces[0].href} className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-white/50">
             <Logo className="text-lg" markClassName="size-[30px]" />
           </Link>
           {etiquetaRol ? (
-            <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase">
+            // En móvil no entra junto a la campana y el menú; el menú lateral ya muestra el rol.
+            <span className="hidden rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase sm:inline">
               {etiquetaRol}
             </span>
           ) : null}
@@ -137,7 +138,7 @@ export function PortalNavbar({
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <SheetHeader>
-                <SheetTitle>SaludGrau</SheetTitle>
+                <SheetTitle>SaludGrau{etiquetaRol ? ` · ${etiquetaRol}` : ""}</SheetTitle>
                 <SheetDescription>
                   {nombreCorto} · {detalle}
                 </SheetDescription>

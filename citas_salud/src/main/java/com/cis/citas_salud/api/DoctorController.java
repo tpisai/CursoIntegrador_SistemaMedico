@@ -1,22 +1,28 @@
 package com.cis.citas_salud.api;
 
+import com.cis.citas_salud.api.dto.CitaDto.DocumentoResponse;
+import com.cis.citas_salud.api.dto.DoctorDto.AtencionResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.CambioFechaRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.CitaAsignadaResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.DerivacionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.HorarioLibreResponse;
+import com.cis.citas_salud.api.dto.DoctorDto.RegistrarAtencionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.SolicitudResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.DoctorService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -64,5 +70,25 @@ public class DoctorController {
     @ResponseStatus(HttpStatus.CREATED)
     public SolicitudResponse derivacion(UsuarioSesion sesion, @Valid @RequestBody DerivacionRequest datos) {
         return doctorService.derivar(sesion, datos);
+    }
+
+    @PostMapping("/citas/{id}/atencion")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AtencionResponse registrarAtencion(UsuarioSesion sesion, @PathVariable("id") Integer idCita,
+                                              @Valid @RequestBody RegistrarAtencionRequest datos) {
+        return doctorService.registrarAtencion(sesion, idCita, datos);
+    }
+
+    @GetMapping("/tipos-documento")
+    public List<String> tiposDocumento() {
+        return DoctorService.TIPOS_DOCUMENTO;
+    }
+
+    @PostMapping(value = "/atenciones/{id}/documentos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public DocumentoResponse subirDocumento(UsuarioSesion sesion, @PathVariable("id") Integer idAtencion,
+                                            @RequestParam("tipoDocumento") String tipoDocumento,
+                                            @RequestParam("archivo") MultipartFile archivo) {
+        return doctorService.subirDocumento(sesion, idAtencion, tipoDocumento, archivo);
     }
 }

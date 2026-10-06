@@ -52,4 +52,22 @@ public final class DoctorDto {
             String motivo,
             String respuestaAdmin) {
     }
+
+    // RF-10: lo que el doctor registra al atender (tabla atencion).
+    public record RegistrarAtencionRequest(
+            @NotNull(message = "Indica si el paciente asistió.") Boolean asistio,
+            @Size(max = 2000, message = "La anamnesis es demasiado larga.") String anamnesis,
+            @Size(max = 2000, message = "El examen físico es demasiado largo.") String examenFisico,
+            @Size(max = 2000, message = "El diagnóstico es demasiado largo.") String diagnostico,
+            @Size(max = 2000, message = "El tratamiento es demasiado largo.") String tratamiento,
+            @Size(max = 2000, message = "Las observaciones son demasiado largas.") String observaciones) {
+    }
+
+    public record AtencionResponse(
+            Integer idCita,
+            // ATENDIDA o NO_ASISTIO
+            String estadoCita,
+            // null si el paciente no asistió (no se crea atención).
+            Integer idAtencion) {
+    }
 }

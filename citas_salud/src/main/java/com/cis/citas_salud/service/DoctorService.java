@@ -1,26 +1,40 @@
 package com.cis.citas_salud.service;
 
 import com.cis.citas_salud.api.ApiException;
+import com.cis.citas_salud.api.dto.CitaDto.DocumentoResponse;
+import com.cis.citas_salud.api.dto.DoctorDto.AtencionResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.CambioFechaRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.CitaAsignadaResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.DerivacionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.HorarioLibreResponse;
+import com.cis.citas_salud.api.dto.DoctorDto.RegistrarAtencionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.SolicitudResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Doctor;
+import com.cis.citas_salud.entity.DocumentoMedico;
 import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.entity.Notificacion;
 import com.cis.citas_salud.entity.Solicitud;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
+import com.cis.citas_salud.repository.DocumentoMedicoRepository;
+import com.cis.citas_salud.repository.HistoriaClinicaRepository;
 import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.SolicitudRepository;
 import com.cis.citas_salud.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -34,26 +48,40 @@ import java.util.Map;
 public class DoctorService {
 
     private static final int DIAS_PROPUESTA = 21;
+    // Tipos de documento médico que el doctor puede adjuntar (RF-10).
+    public static final List<String> TIPOS_DOCUMENTO = List.of(
+            "Receta médica", "Resultados de laboratorio", "Diagnóstico del paciente", "Informe médico", "Otro");
+    private static final List<String> TIPOS_ARCHIVO = List.of("application/pdf", "image/jpeg", "image/png");
 
     private final DoctorRepository doctorRepository;
     private final CitaRepository citaRepository;
     private final HorarioRepository horarioRepository;
     private final SolicitudRepository solicitudRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AtencionRepository atencionRepository;
+    private final HistoriaClinicaRepository historiaRepository;
+    private final DocumentoMedicoRepository documentoRepository;
     private final NotificacionService notificacionService;
     private final ObjectMapper objectMapper;
+    private final Path carpetaArchivos;
 
     public DoctorService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                          HorarioRepository horarioRepository, SolicitudRepository solicitudRepository,
-                         UsuarioRepository usuarioRepository, NotificacionService notificacionService,
-                         ObjectMapper objectMapper) {
+                         UsuarioRepository usuarioRepository, AtencionRepository atencionRepository,
+                         HistoriaClinicaRepository historiaRepository, DocumentoMedicoRepository documentoRepository,
+                         NotificacionService notificacionService, ObjectMapper objectMapper,
+                         @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
         this.horarioRepository = horarioRepository;
         this.solicitudRepository = solicitudRepository;
         this.usuarioRepository = usuarioRepository;
+        this.atencionRepository = atencionRepository;
+        this.historiaRepository = historiaRepository;
+        this.documentoRepository = documentoRepository;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
+        this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
     }
 
     @Transactional(readOnly = true)
@@ -127,6 +155,101 @@ public class DoctorService {
         return solicitudRepository.delDoctor(doctor(sesion).getIdDoctor()).stream().map(this::respuesta).toList();
     }
 
+    /** RF-10: el doctor registra la atención (diagnóstico, tratamiento) o la inasistencia del paciente. */
+    public AtencionResponse registrarAtencion(UsuarioSesion sesion, Integer idCita, RegistrarAtencionRequest datos) {
+        Doctor doctor = doctor(sesion);
+        Cita cita = citaActivaDelDoctor(doctor, idCita);
+        Horario horario = cita.getHorario();
+        if (horario.getFecha().isAfter(LocalDate.now())) {
+            throw ApiException.conflicto("Solo puedes registrar la atención de citas de hoy o de días anteriores.");
+        }
+        if (atencionRepository.existsByCita_IdCita(idCita)) {
+            throw ApiException.conflicto("Esta cita ya tiene una atención registrada.");
+        }
+
+        horario.setEstado(Horario.FINALIZADO);
+        if (!datos.asistio()) {
+            cita.setEstado(Cita.NO_ASISTIO);
+            return new AtencionResponse(idCita, Cita.NO_ASISTIO, null);
+        }
+
+        String diagnostico = textoOpcional(datos.diagnostico());
+        String tratamiento = textoOpcional(datos.tratamiento());
+        if (diagnostico == null) throw ApiException.datosInvalidos("Escribe el diagnóstico.");
+        if (tratamiento == null) throw ApiException.datosInvalidos("Escribe el tratamiento indicado.");
+
+        Atencion atencion = new Atencion();
+        atencion.setHistoria(historiaRepository.findByPaciente_IdPaciente(cita.getPaciente().getIdPaciente())
+                .orElseThrow(() -> ApiException.conflicto("El paciente no tiene historia clínica abierta.")));
+        atencion.setCita(cita);
+        atencion.setDoctor(doctor);
+        atencion.setEstado("FINALIZADA");
+        atencion.setAnamnesis(textoOpcional(datos.anamnesis()));
+        atencion.setExamenFisico(textoOpcional(datos.examenFisico()));
+        atencion.setDiagnostico(diagnostico);
+        atencion.setTratamiento(tratamiento);
+        atencion.setObservaciones(textoOpcional(datos.observaciones()));
+        atencionRepository.save(atencion);
+        cita.setEstado(Cita.ATENDIDA);
+
+        notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.CITA, "Atención registrada",
+                doctor.getUsuario().getNombreCorto() + " registró tu atención del "
+                        + Formato.diaHora(horario.getFecha(), horario.getHoraInicio())
+                        + ". Puedes verla en tu historial médico.");
+        return new AtencionResponse(idCita, Cita.ATENDIDA, atencion.getIdAtencion());
+    }
+
+    /** RF-10: adjunta un archivo (receta, resultados…) a una atención; el paciente lo descarga (RF-11). */
+    public DocumentoResponse subirDocumento(UsuarioSesion sesion, Integer idAtencion, String tipoDocumento,
+                                            MultipartFile archivo) {
+        Doctor doctor = doctor(sesion);
+        Atencion atencion = atencionRepository.findById(idAtencion)
+                .filter(a -> a.getDoctor().getIdDoctor().equals(doctor.getIdDoctor()))
+                .orElseThrow(() -> ApiException.noEncontrado("No encontramos esa atención."));
+        if (tipoDocumento == null || !TIPOS_DOCUMENTO.contains(tipoDocumento)) {
+            throw ApiException.datosInvalidos("Elige el tipo de documento.");
+        }
+        if (archivo == null || archivo.isEmpty()) throw ApiException.datosInvalidos("Adjunta un archivo.");
+        if (!TIPOS_ARCHIVO.contains(archivo.getContentType())) {
+            throw ApiException.datosInvalidos("Solo se aceptan archivos PDF, JPG o PNG.");
+        }
+
+        String nombre = nombreSeguro(archivo.getOriginalFilename());
+        String ruta = "atenciones/" + idAtencion + "/" + System.currentTimeMillis() + "-" + nombre;
+        try {
+            Path destino = carpetaArchivos.resolve(ruta).normalize();
+            Files.createDirectories(destino.getParent());
+            archivo.transferTo(destino);
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo guardar el archivo", e);
+        }
+
+        DocumentoMedico documento = new DocumentoMedico();
+        documento.setAtencion(atencion);
+        documento.setTipoDocumento(tipoDocumento);
+        documento.setNombreArchivo(nombre);
+        documento.setRutaArchivo(ruta);
+        documento.setTipoMime(archivo.getContentType());
+        documentoRepository.save(documento);
+
+        notificacionService.crear(atencion.getHistoria().getPaciente().getUsuario(), Notificacion.SISTEMA,
+                "Nuevo documento disponible", tipoDocumento + " ya está en tu historial médico para descargar.");
+        return new DocumentoResponse(documento.getIdDocumento(), tipoDocumento, nombre,
+                Formato.fecha(documento.getFechaCarga().toLocalDate()));
+    }
+
+    /** Deja solo letras, números, punto, guion y guion bajo (evita rutas como "../"). */
+    private static String nombreSeguro(String original) {
+        String base = original == null ? "documento" : Path.of(original).getFileName().toString();
+        String limpio = base.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (limpio.isBlank() || limpio.startsWith(".")) limpio = "documento" + limpio;
+        return limpio.length() > 100 ? limpio.substring(limpio.length() - 100) : limpio;
+    }
+
+    private static String textoOpcional(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
+    }
+
     private Solicitud guardar(Doctor doctor, Cita cita, String tipo, String motivo, Map<String, Object> detalle) {
         Solicitud solicitud = new Solicitud();
         solicitud.setDoctor(doctor);
@@ -196,6 +319,11 @@ public class DoctorService {
     }
 
     private String detalle(Solicitud s) {
+        return detalleLegible(s, objectMapper);
+    }
+
+    /** "Nueva fecha: Jue 1 oct · 09:30" o "Hospital … · Cardiología" (también lo usa el panel de administración). */
+    static String detalleLegible(Solicitud s, ObjectMapper objectMapper) {
         if (s.getDatosAdicionales() == null) return null;
         Map<?, ?> datos = objectMapper.readValue(s.getDatosAdicionales(), Map.class);
         if (Solicitud.CAMBIO_HORARIO.equals(s.getTipo())) {

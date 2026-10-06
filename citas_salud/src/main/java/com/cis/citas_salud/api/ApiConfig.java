@@ -1,6 +1,7 @@
 package com.cis.citas_salud.api;
 
 import com.cis.citas_salud.api.seguridad.SesionArgumentResolver;
+import jakarta.servlet.MultipartConfigElement;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,13 @@ public class ApiConfig implements WebMvcConfigurer {
     @Bean
     public BCryptPasswordEncoder pinEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /** Documentos médicos de hasta 5 MB (reemplaza el límite de 1 MB que trae Spring Boot). */
+    @Bean
+    public MultipartConfigElement multipartConfigElement() {
+        long cincoMb = 5L * 1024 * 1024;
+        return new MultipartConfigElement("", cincoMb, cincoMb + 512 * 1024, 0);
     }
 
     @Override

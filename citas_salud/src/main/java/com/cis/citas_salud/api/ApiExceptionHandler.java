@@ -10,6 +10,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.Map;
 
@@ -36,6 +37,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
             MethodArgumentTypeMismatchException.class})
     public ResponseEntity<Map<String, String>> peticionInvalida(Exception e) {
         return respuesta(HttpStatus.BAD_REQUEST, "La solicitud no tiene el formato esperado.");

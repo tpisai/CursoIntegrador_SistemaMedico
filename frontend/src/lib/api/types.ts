@@ -168,6 +168,126 @@ export interface Solicitud {
   respuestaAdmin: string | null
 }
 
+export interface RegistrarAtencionRequest {
+  asistio: boolean
+  anamnesis?: string
+  examenFisico?: string
+  diagnostico?: string
+  tratamiento?: string
+  observaciones?: string
+}
+
+export interface AtencionRegistrada {
+  idCita: number
+  estadoCita: Extract<EstadoCita, "ATENDIDA" | "NO_ASISTIO">
+  // null si el paciente no asistió.
+  idAtencion: number | null
+}
+
+// --- Panel de administración ---
+
+export interface ResumenAdmin {
+  citasHoy: number
+  solicitudesPendientes: number
+  campaniasVigentes: number
+  // % de citas del mes sin asistencia.
+  ausentismoMes: number
+}
+
+export interface SolicitudAdmin {
+  idSolicitud: number
+  tipo: TipoSolicitud
+  estado: EstadoSolicitud
+  fechaSolicitud: string
+  doctor: string
+  especialidad: string
+  paciente: string
+  dniPaciente: string
+  fechaCita: string
+  horaCita: string
+  detalle: string | null
+  motivo: string
+  respuestaAdmin: string | null
+}
+
+export interface ResponderSolicitudRequest {
+  decision: "APROBAR" | "RECHAZAR"
+  respuesta?: string
+}
+
+export interface CrearHorariosRequest {
+  idDoctor: number
+  idConsultorio: number
+  fecha: string
+  horaInicio: string
+  horaFin: string
+  duracionMinutos: number
+}
+
+export interface CrearHorariosResponse {
+  creados: number
+  // Turnos que ya existían o se cruzaban con otros del doctor.
+  omitidos: number
+  fecha: string
+  doctor: string
+  consultorio: string
+}
+
+export type EstadoCampania = "PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
+
+export interface CrearCampaniaRequest {
+  titulo: string
+  descripcion?: string
+  fechaInicio: string
+  fechaFin: string
+  // "HH:mm"; sin hora fija si no se envía.
+  hora?: string
+  lugar?: string
+  cupos: number
+}
+
+export interface CampaniaAdmin {
+  idCampania: number
+  titulo: string
+  descripcion: string | null
+  fechaInicio: string
+  fechaFin: string
+  hora: string | null
+  lugar: string | null
+  estado: EstadoCampania
+  cupos: number
+  cuposDisponibles: number
+  inscritos: number
+}
+
+// --- Campañas (paciente) ---
+
+export interface Campania {
+  idCampania: number
+  titulo: string
+  descripcion: string | null
+  fechaInicio: string
+  fechaFin: string
+  hora: string | null
+  lugar: string | null
+  estado: EstadoCampania
+  cupos: number
+  cuposDisponibles: number
+  // Inscripción del paciente; ambos null si aún no se inscribe.
+  idInscripcion: number | null
+  // Código del comprobante, p. ej. "C-000012".
+  codigoInscripcion: string | null
+}
+
+export interface Inscripcion {
+  idInscripcion: number
+  // Código del comprobante, p. ej. "C-000012".
+  codigo: string
+  idCampania: number
+  campania: string
+  fechaInscripcion: string
+}
+
 // --- Notificaciones ---
 
 export interface Notificacion {

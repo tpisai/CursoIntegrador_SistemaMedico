@@ -53,4 +53,10 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
                               @Param("estados") Collection<String> estados,
                               @Param("desde") LocalDate desde,
                               @Param("hasta") LocalDate hasta);
+
+    // Indicadores del panel de administración.
+    @Query("select count(c) from Cita c where c.estado in :estados and c.horario.fecha between :desde and :hasta")
+    long contarEntre(@Param("estados") Collection<String> estados,
+                     @Param("desde") LocalDate desde,
+                     @Param("hasta") LocalDate hasta);
 }

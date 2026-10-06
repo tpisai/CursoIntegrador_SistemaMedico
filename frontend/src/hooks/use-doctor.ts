@@ -23,3 +23,7 @@ export function useHorariosLibres() {
 export function useSolicitudes() {
   return useSWR<Solicitud[]>(rutasDoctor.solicitudes)
 }
+
+export function useTiposDocumento() {
+  return useSWR<string[]>(rutasDoctor.tiposDocumento, { revalidateOnFocus: false })
+}

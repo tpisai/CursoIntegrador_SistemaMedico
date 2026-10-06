@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,11 @@ public interface HorarioRepository extends JpaRepository<Horario, Integer> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select h from Horario h where h.idHorario = :id")
     Optional<Horario> bloquear(@Param("id") Integer idHorario);
+
+    /** Bloquea varios horarios siempre en orden de id, para que dos transacciones no se bloqueen entre sí. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select h from Horario h where h.idHorario in :ids order by h.idHorario")
+    List<Horario> bloquearVarios(@Param("ids") Collection<Integer> idsHorario);
 
     List<Horario> findByDoctor_IdDoctorAndConsultorio_IdConsultorioAndFechaAndEstadoNotOrderByHoraInicio(
             Integer idDoctor, Integer idConsultorio, LocalDate fecha, String estado);

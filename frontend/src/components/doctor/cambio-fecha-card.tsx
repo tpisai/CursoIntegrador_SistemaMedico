@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { CampoSelect } from "@/components/doctor/campo-select"
+import { CampoSelect } from "@/components/portal/campo-select"
 import { useCitasProximas, useHorariosLibres } from "@/hooks/use-doctor"
 import { rutasDoctor, solicitarCambioFecha } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"

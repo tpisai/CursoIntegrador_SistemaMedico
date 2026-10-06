@@ -58,5 +58,8 @@ foreach ($script in "citas_salud.sql", "02_correlativo_ticket.sql", "03_datos_in
     Invoke-Psql $BaseDeDatos @("-f", (Join-Path $PSScriptRoot $script))
 }
 
-$resumen = & $Psql -h $Servidor -U $Usuario -d $BaseDeDatos -tAc "SELECT (SELECT count(*) FROM usuario) || ' usuarios, ' || (SELECT count(*) FROM doctor) || ' doctores, ' || (SELECT count(*) FROM cita) || ' citas'"
-Write-Host "Listo: $resumen."
+Write-Host "Listo. Registros en las tablas que llenan los formularios:"
+$tablas = "usuario", "paciente", "doctor", "horario", "cita", "atencion", "documento_medico", "solicitud", "campania", "inscripcion_campania"
+$conteo = ($tablas | ForEach-Object { "('$_', (SELECT count(*) FROM $_))" }) -join ", "
+& $Psql -h $Servidor -U $Usuario -d $BaseDeDatos -q -P footer=off -c "SELECT tabla, registros FROM (VALUES $conteo) AS t(tabla, registros)"
+Write-Host "Los horarios de los próximos 60 días los genera el backend al arrancar."

@@ -14,12 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Crea los turnos libres de los próximos días para cada doctor activo.
@@ -74,25 +75,61 @@ public class HorarioGeneradorService {
 
         LocalDate desde = LocalDate.now();
         LocalDate hasta = desde.plusDays(diasAFuturo);
-        Set<String> existentes = new HashSet<>();
-        for (Horario h : horarioRepository.findByDoctor_IdDoctorAndFechaBetweenAndEstadoNot(
-                doctor.getIdDoctor(), desde, hasta, Horario.CANCELADO)) {
-            existentes.add(h.getFecha() + " " + h.getHoraInicio());
-        }
+        Map<LocalDate, List<Horario>> existentes = existentesPorDia(doctor, desde, hasta);
 
         List<Horario> nuevos = new ArrayList<>();
         for (LocalDate fecha = desde; !fecha.isAfter(hasta); fecha = fecha.plusDays(1)) {
             DayOfWeek dia = fecha.getDayOfWeek();
             if (dia == DayOfWeek.SUNDAY) continue;
             int turnos = dia == DayOfWeek.SATURDAY ? TURNOS_SABADO : TURNOS_SEMANA;
-            Consultorio consultorio = consultorioDelDia(doctor, fecha);
-            for (int i = 0; i < turnos; i++) {
-                LocalTime inicio = INICIO.plusMinutes((long) i * MINUTOS_TURNO);
-                if (existentes.contains(fecha + " " + inicio)) continue;
-                nuevos.add(new Horario(doctor, consultorio, fecha, inicio, inicio.plusMinutes(MINUTOS_TURNO)));
-            }
+            LocalTime fin = INICIO.plusMinutes((long) turnos * MINUTOS_TURNO);
+            nuevos.addAll(turnosLibres(doctor, consultorioDelDia(doctor, fecha), fecha, INICIO, fin, MINUTOS_TURNO,
+                    existentes.getOrDefault(fecha, List.of())));
         }
         horarioRepository.saveAll(nuevos);
         return nuevos.size();
+    }
+
+    public record Resultado(int creados, int omitidos) {
+    }
+
+    /**
+     * Crea los turnos de un doctor entre dos horas de un día (formulario de admisión, RF-13).
+     * Los turnos que se cruzan con otros ya existentes del doctor se omiten.
+     */
+    @Transactional
+    public Resultado crearTurnos(Doctor doctor, Consultorio consultorio, LocalDate fecha,
+                                 LocalTime inicio, LocalTime fin, int duracionMinutos) {
+        int posibles = (int) (Duration.between(inicio, fin).toMinutes() / duracionMinutos);
+        List<Horario> nuevos = turnosLibres(doctor, consultorio, fecha, inicio, fin, duracionMinutos,
+                existentesPorDia(doctor, fecha, fecha).getOrDefault(fecha, List.of()));
+        horarioRepository.saveAll(nuevos);
+        return new Resultado(nuevos.size(), posibles - nuevos.size());
+    }
+
+    private Map<LocalDate, List<Horario>> existentesPorDia(Doctor doctor, LocalDate desde, LocalDate hasta) {
+        Map<LocalDate, List<Horario>> porDia = new HashMap<>();
+        for (Horario h : horarioRepository.findByDoctor_IdDoctorAndFechaBetweenAndEstadoNot(
+                doctor.getIdDoctor(), desde, hasta, Horario.CANCELADO)) {
+            porDia.computeIfAbsent(h.getFecha(), f -> new ArrayList<>()).add(h);
+        }
+        return porDia;
+    }
+
+    /** Turnos de [inicio, fin) que no se cruzan con los horarios que el doctor ya tiene ese día. */
+    private static List<Horario> turnosLibres(Doctor doctor, Consultorio consultorio, LocalDate fecha,
+                                              LocalTime inicio, LocalTime fin, int duracionMinutos,
+                                              List<Horario> existentes) {
+        List<Horario> nuevos = new ArrayList<>();
+        // Se cuentan los turnos de antemano para que ninguno pase de medianoche (hora_fin > hora_inicio).
+        long turnos = Duration.between(inicio, fin).toMinutes() / duracionMinutos;
+        for (int i = 0; i < turnos; i++) {
+            LocalTime desde = inicio.plusMinutes((long) i * duracionMinutos);
+            LocalTime hasta = desde.plusMinutes(duracionMinutos);
+            boolean cruza = existentes.stream()
+                    .anyMatch(h -> desde.isBefore(h.getHoraFin()) && h.getHoraInicio().isBefore(hasta));
+            if (!cruza) nuevos.add(new Horario(doctor, consultorio, fecha, desde, hasta));
+        }
+        return nuevos;
     }
 }

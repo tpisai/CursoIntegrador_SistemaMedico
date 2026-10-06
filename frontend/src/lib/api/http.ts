@@ -48,13 +48,15 @@ async function enviar(metodo: Metodo, path: string, body?: unknown): Promise<Res
 
   let res: Response
   try {
+    // Un FormData (archivos) lo envía el navegador con su propio Content-Type multipart.
+    const esFormulario = body instanceof FormData
     res = await fetch(`${API_URL}${path}`, {
       method: metodo,
       headers: {
-        ...(body !== undefined && { "Content-Type": "application/json" }),
+        ...(body !== undefined && !esFormulario && { "Content-Type": "application/json" }),
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : esFormulario ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, SIN_CONEXION)

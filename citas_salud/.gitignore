@@ -34,3 +34,6 @@ build/
 
 ### Configuración local (contraseña de PostgreSQL de cada integrante) ###
 config/
+
+### Documentos médicos subidos en local ###
+archivos/

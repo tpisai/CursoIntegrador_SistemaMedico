@@ -7,6 +7,7 @@ public record UsuarioSesion(Integer idUsuario, String rol) {
 
     public static final String PACIENTE = "PACIENTE";
     public static final String DOCTOR = "DOCTOR";
+    public static final String ADMINISTRADOR = "ADMINISTRADOR";
 
     public UsuarioSesion exigirRol(String rolEsperado) {
         if (!rolEsperado.equals(rol)) {

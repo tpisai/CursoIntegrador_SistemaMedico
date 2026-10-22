@@ -30,6 +30,9 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     @Query(CON_DETALLE + " where c.idCita = :id")
     Optional<Cita> buscarConDetalle(@Param("id") Integer idCita);
 
+    @Query(CON_DETALLE + " where c.numeroTicket = :ticket")
+    Optional<Cita> buscarPorTicket(@Param("ticket") String numeroTicket);
+
     @Query(CON_DETALLE + """
              where p.idPaciente = :paciente and c.estado in :estados and h.fecha >= :desde
              order by h.fecha, h.horaInicio

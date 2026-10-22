@@ -68,6 +68,36 @@ public final class AdminDto {
             String consultorio) {
     }
 
+    // RF-12: resultado de buscar o validar un ticket en recepción.
+    public enum ResultadoTicket {
+        // Cita activa de hoy, aún sin validar: el paciente puede pasar.
+        VALIDO,
+        // Recepción ya registró la llegada del paciente.
+        YA_VALIDADO,
+        // La cita es de otro día.
+        OTRO_DIA,
+        // La cita fue cancelada, atendida o marcada como inasistencia.
+        NO_ACTIVA
+    }
+
+    public record TicketResponse(
+            Integer idCita,
+            String numeroTicket,
+            String estado,
+            String paciente,
+            String dniPaciente,
+            String especialidad,
+            String doctor,
+            String fecha,
+            String horaInicio,
+            String consultorio,
+            ResultadoTicket resultado,
+            // Indicación para recepción, lista para mostrar.
+            String mensaje,
+            // "YYYY-MM-DDTHH:mm:ss" de la validación; null si aún no se valida.
+            String validadoEn) {
+    }
+
     // RF-20: nueva campaña médica.
     public record CrearCampaniaRequest(
             @NotBlank(message = "Escribe el título de la campaña.") @Size(max = 150, message = "El título es demasiado largo.") String titulo,

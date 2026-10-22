@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { CrearHorariosCard } from "@/components/admin/crear-horarios-card"
 import { ResumenKpis } from "@/components/admin/resumen-kpis"
 import { SolicitudesAdminCard } from "@/components/admin/solicitudes-admin-card"
+import { ValidarTicketCard } from "@/components/admin/validar-ticket-card"
 import { Encabezado } from "@/components/portal/encabezado"
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export default function PanelAdminPage() {
     <>
       <Encabezado
         titulo="Panel de administración y recepción"
-        descripcion="Gestiona los horarios de citas, aprueba las solicitudes del personal médico y envía alertas a los pacientes."
+        descripcion="Valida los tickets en recepción, gestiona los horarios de citas, aprueba las solicitudes del personal médico y envía alertas a los pacientes."
       />
       <ResumenKpis />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
@@ -23,7 +24,10 @@ export default function PanelAdminPage() {
           <SolicitudesAdminCard tipo="CAMBIO_HORARIO" />
           <SolicitudesAdminCard tipo="DERIVACION" />
         </div>
-        <CrearHorariosCard />
+        <div className="flex flex-col gap-6">
+          <ValidarTicketCard />
+          <CrearHorariosCard />
+        </div>
       </div>
     </>
   )

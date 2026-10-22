@@ -13,6 +13,9 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Inte
 
     List<Notificacion> findTop30ByUsuario_IdUsuarioOrderByFechaEnvioDescIdNotificacionDesc(Integer idUsuario);
 
+    // Evita repetir un recordatorio: el título identifica la cita (ticket) o la campaña.
+    boolean existsByUsuario_IdUsuarioAndTipoAndTitulo(Integer idUsuario, String tipo, String titulo);
+
     Optional<Notificacion> findByIdNotificacionAndUsuario_IdUsuario(Integer idNotificacion, Integer idUsuario);
 
     @Modifying

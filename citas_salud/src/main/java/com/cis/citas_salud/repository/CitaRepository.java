@@ -57,6 +57,9 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
                               @Param("desde") LocalDate desde,
                               @Param("hasta") LocalDate hasta);
 
+    @Query(CON_DETALLE + " where c.estado in :estados and h.fecha = :fecha order by h.horaInicio")
+    List<Cita> delDia(@Param("estados") Collection<String> estados, @Param("fecha") LocalDate fecha);
+
     // Indicadores del panel de administración.
     @Query("select count(c) from Cita c where c.estado in :estados and c.horario.fecha between :desde and :hasta")
     long contarEntre(@Param("estados") Collection<String> estados,

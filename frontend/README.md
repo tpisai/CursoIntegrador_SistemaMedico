@@ -92,6 +92,19 @@ doctor recibe la notificación "Paciente en recepción". El estado de la cita no
 el doctor al registrar la atención. Con los datos iniciales hay citas de hoy con el doctor `87654321`
 para probarlo.
 
+### Recordatorios automáticos (RF-22)
+
+El backend avisa a cada paciente de sus **citas activas** y de las **campañas a las que se inscribió**
+que son al día siguiente (`RecordatorioService`). Corre al arrancar y luego cada hora
+(`saludgrau.recordatorios.cron`); no repite un aviso que ya envió.
+
+- En la campana aparece como notificación de tipo `RECORDATORIO` ("Recordatorio de cita · A-0154").
+- Se envía una copia por correo al `correo` del usuario (`CorreoService`). Para que salga de verdad hay que
+  configurar un servidor SMTP en `citas_salud/config/application.properties` (ver los comentarios de
+  `src/main/resources/application.properties`); sin esa configuración el correo solo se registra en el log.
+- SMS/WhatsApp quedan para cuando se contrate un proveedor (Twilio, API de WhatsApp Business): bastaría con
+  otro canal junto a `CorreoService`.
+
 ## Formularios de entrada de datos
 
 Cada formulario valida en el navegador y otra vez en la API, y guarda en PostgreSQL:

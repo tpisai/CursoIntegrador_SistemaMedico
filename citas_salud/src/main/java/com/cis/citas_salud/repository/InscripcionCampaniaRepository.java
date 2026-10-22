@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +25,17 @@ public interface InscripcionCampaniaRepository extends JpaRepository<Inscripcion
             where i.idInscripcion = :id
             """)
     Optional<InscripcionCampania> buscarConDetalle(@Param("id") Integer idInscripcion);
+
+    /** Inscripciones vigentes a campañas que empiezan en la fecha dada (recordatorios, RF-22). */
+    @Query("""
+            select i from InscripcionCampania i
+            join fetch i.campania c
+            join fetch i.paciente p
+            join fetch p.usuario
+            where i.estado = 'INSCRITO' and c.estado in :estados and c.fechaInicio = :fecha
+            """)
+    List<InscripcionCampania> deCampaniasQueEmpiezan(@Param("estados") Collection<String> estados,
+                                                     @Param("fecha") LocalDate fecha);
 
     /** [idCampania, inscritos] por campaña, en una sola consulta. */
     @Query("""

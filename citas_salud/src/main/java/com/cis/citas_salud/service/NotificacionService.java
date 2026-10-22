@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Notificaciones dentro del sistema (RF-17, RF-22). El envío por SMS, WhatsApp o correo
- * se conectará en el módulo de notificaciones externas.
+ * Notificaciones dentro del sistema (RF-17, RF-22). Los recordatorios automáticos
+ * (RecordatorioService) además envían una copia por correo con CorreoService.
  */
 @Service
 @Transactional

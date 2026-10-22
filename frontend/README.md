@@ -71,11 +71,26 @@ administración solo se crean en la base de datos.
 | `/doctor`                | 03 · Panel del Doctor, registrar atención            | RF-10, RF-14 a RF-16 |
 | `/doctor/agenda`         | Citas asignadas de cualquier día                     | RF-10, RF-14         |
 | `/doctor/solicitudes`    | Estado de cambios de fecha y derivaciones            | RF-15, RF-16         |
-| `/admin`                 | 04 · Panel de Administración: indicadores, solicitudes, horarios | RF-13, RF-17, RF-18 |
+| `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
 
-Pendiente para las siguientes entregas: validación de tickets en admisión.
+### Recepción: validación de tickets (RF-12)
+
+En `/admin` → **Validar ticket de atención**, recepción escribe el número que presenta el paciente
+(`A-0154`, `a-154` o solo `154`) y ve a quién corresponde y si puede pasar:
+
+| Resultado     | Cuándo                                              |
+| ------------- | --------------------------------------------------- |
+| `VALIDO`      | Cita activa de hoy aún sin validar → **Registrar llegada** |
+| `YA_VALIDADO` | Recepción ya registró la llegada (muestra la hora)  |
+| `OTRO_DIA`    | La cita es de otra fecha: no le corresponde el turno |
+| `NO_ACTIVA`   | La cita fue cancelada, atendida o marcada como inasistencia |
+
+Al registrar la llegada se guarda una fila en `auditoria` (acción `VALIDAR_TICKET`, entidad `cita`) y el
+doctor recibe la notificación "Paciente en recepción". El estado de la cita no cambia: lo sigue cerrando
+el doctor al registrar la atención. Con los datos iniciales hay citas de hoy con el doctor `87654321`
+para probarlo.
 
 ## Formularios de entrada de datos
 
@@ -165,6 +180,8 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |
 | `PATCH` | `/admin/solicitudes/{id}`                                           | `{ decision: APROBAR\|RECHAZAR, respuesta? }` (el motivo es obligatorio al rechazar). 409 si ya se respondió |
+| `GET`   | `/admin/tickets/{numero}`                                           | Cita del ticket y si puede pasar (`resultado`: `VALIDO`, `YA_VALIDADO`, `OTRO_DIA`, `NO_ACTIVA`) |
+| `POST`  | `/admin/tickets/{numero}/validacion`                                | Registra la llegada del paciente y avisa al doctor. 409 si el ticket no es válido hoy |
 | `POST`  | `/admin/horarios`                                                   | `{ idDoctor, idConsultorio, fecha, horaInicio, horaFin, duracionMinutos }` → `{ creados, omitidos }` |
 | `GET`   | `/admin/campanias`                                                  | Todas las campañas con sus inscritos                    |
 | `POST`  | `/admin/campanias`                                                  | `{ titulo, descripcion?, fechaInicio, fechaFin, hora?, lugar?, cupos }` |

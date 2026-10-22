@@ -233,7 +233,28 @@ export interface CrearHorariosResponse {
   consultorio: string
 }
 
-export type EstadoCampania = "PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
+// RF-12: validación del ticket en recepción.
+export type ResultadoTicket = "VALIDO" | "YA_VALIDADO" | "OTRO_DIA" | "NO_ACTIVA"
+
+export interface TicketRecepcion {
+  idCita: number
+  numeroTicket: string
+  estado: EstadoCita
+  paciente: string
+  dniPaciente: string
+  especialidad: string
+  doctor: string
+  fecha: string
+  horaInicio: string
+  consultorio: string
+  resultado: ResultadoTicket
+  // Indicación para recepción, ya en texto.
+  mensaje: string
+  // "YYYY-MM-DDTHH:mm:ss"; null si aún no se valida.
+  validadoEn: string | null
+}
+
+export type EstadoCampania ="PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
 
 export interface CrearCampaniaRequest {
   titulo: string

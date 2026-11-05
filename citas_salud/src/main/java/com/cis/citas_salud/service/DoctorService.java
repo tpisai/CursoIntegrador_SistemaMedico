@@ -210,7 +210,7 @@ public class DoctorService {
             throw ApiException.datosInvalidos("Elige el tipo de documento.");
         }
         if (archivo == null || archivo.isEmpty()) throw ApiException.datosInvalidos("Adjunta un archivo.");
-        if (!TIPOS_ARCHIVO.contains(archivo.getContentType())) {
+        if (archivo.getContentType() == null || !TIPOS_ARCHIVO.contains(archivo.getContentType())) {
             throw ApiException.datosInvalidos("Solo se aceptan archivos PDF, JPG o PNG.");
         }
 
@@ -240,7 +240,8 @@ public class DoctorService {
 
     /** Deja solo letras, números, punto, guion y guion bajo (evita rutas como "../"). */
     private static String nombreSeguro(String original) {
-        String base = original == null ? "documento" : Path.of(original).getFileName().toString();
+        String base = original == null ? "documento"
+                : original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
         String limpio = base.replaceAll("[^A-Za-z0-9._-]", "_");
         if (limpio.isBlank() || limpio.startsWith(".")) limpio = "documento" + limpio;
         return limpio.length() > 100 ? limpio.substring(limpio.length() - 100) : limpio;

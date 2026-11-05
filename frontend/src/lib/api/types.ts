@@ -100,6 +100,27 @@ export interface Cita {
   consultorio: string
 }
 
+export interface FilaReporte {
+  nombre: string
+  // Especialidad del doctor; vacío en las demás filas.
+  detalle: string | null
+  total: number
+  atendidas: number
+  noAsistio: number
+  canceladas: number
+  pendientes: number
+  // % de citas cerradas a las que el paciente no asistió.
+  ausentismo: number
+}
+
+export interface ReporteCitas {
+  desde: string
+  hasta: string
+  totales: FilaReporte
+  porEspecialidad: FilaReporte[]
+  porDoctor: FilaReporte[]
+}
+
 export interface ReservarCitaRequest {
   idHorario: number
   motivo?: string

@@ -68,7 +68,7 @@ public class RecordatorioService {
         String mensaje = "Mañana " + Formato.diaHora(h.getFecha(), h.getHoraInicio()) + " tienes cita de "
                 + h.getDoctor().getEspecialidad().getNombre() + " con " + h.getDoctor().getUsuario().getNombreCorto()
                 + " en " + h.getConsultorio().getUbicacion() + ". Presenta tu ticket " + cita.getNumeroTicket()
-                + " en recepción. Si no podrás asistir, cancela la cita para liberar el turno.";
+                + " en recepción. Confirma tu asistencia en Mis citas o, si no podrás ir, cancela para liberar el turno.";
         return recordar(cita.getPaciente().getUsuario(), "Recordatorio de cita · " + cita.getNumeroTicket(), mensaje);
     }
 

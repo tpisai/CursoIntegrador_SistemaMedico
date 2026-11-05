@@ -1,0 +1,13 @@
+# Contexto de build del backend. config/ guarda la contraseña local de cada integrante.
+config/
+archivos/
+target/
+.git
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+*.iml
+HELP.md
+Dockerfile
+.dockerignore

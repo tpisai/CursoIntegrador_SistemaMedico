@@ -14,6 +14,7 @@ export const rutasAdmin = {
   resumen: "/admin/resumen",
   solicitudes: "/admin/solicitudes",
   campanias: "/admin/campanias",
+  reporteCitas: (desde: string, hasta: string) => `/admin/reportes/citas?desde=${desde}&hasta=${hasta}`,
 }
 
 export function responderSolicitud(idSolicitud: number, datos: ResponderSolicitudRequest) {

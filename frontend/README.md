@@ -78,7 +78,7 @@ consultorio, así que no aparece en la reserva en línea.
 | `/login`                 | 01 · Login, M1 · Registro, M2 · Recuperar PIN        | RF-01 a RF-04        |
 | `/paciente/agendar`      | 02 · Portal del Paciente, M3 · Cita confirmada       | RF-05 a RF-09, RF-11 |
 | `/paciente`              | Inicio: próxima cita, accesos, citas e historial     | RF-07, RF-09         |
-| `/paciente/citas`        | Mis citas activas (ver ticket, cancelar)             | RF-07, RF-08         |
+| `/paciente/citas`        | Mis citas activas (ver ticket, confirmar, cancelar)  | RF-07, RF-08         |
 | `/paciente/historial`    | Historial de atención y documentos                   | RF-09, RF-11         |
 | `/paciente/comunicacion` | 05 · Comunicación y Campañas: inscripción y comprobante | RF-19 a RF-21     |
 | `/doctor`                | 03 · Panel del Doctor, registrar atención            | RF-10, RF-14 a RF-16 |
@@ -86,6 +86,7 @@ consultorio, así que no aparece en la reserva en línea.
 | `/doctor/solicitudes`    | Estado de cambios de fecha y derivaciones            | RF-15, RF-16         |
 | `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
+| `/admin/reportes`        | Reportes de control de citas y ausentismo            | EDT 4.8              |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
 
 ### Recepción: validación de tickets (RF-12)
@@ -154,6 +155,17 @@ Los datos iniciales dejan al menos 5 registros en cada una de esas tablas:
 
 `instalar_bd.ps1` muestra este conteo al terminar.
 
+## Pruebas
+
+| Prueba                  | Cómo se ejecuta                                                         | Necesita                     |
+| ----------------------- | ----------------------------------------------------------------------- | ---------------------------- |
+| Unitarias (JUnit)       | `.\mvnw test`, desde `citas_salud/`                                     | Solo el JDK 25               |
+| Integración (Postman)   | Pasos en la descripción de `docs/postman/SaludGrau.postman_collection.json` | Base de prueba recién instalada |
+| Carga y concurrencia    | `node docs/pruebas/prueba-carga.mjs http://localhost:8081`              | Base de prueba recién instalada |
+
+La colección y la prueba de carga crean datos: nunca las ejecutes contra la base `centro_salud`. Después de la
+colección, reinstala la base de prueba antes de la prueba de carga, porque la colección bloquea una cuenta 5 minutos.
+
 ## Estructura
 
 ```
@@ -164,7 +176,7 @@ src/
     auth/               Login, registro (paciente o doctor) y recuperación de PIN
     citas/              Reserva, calendario, horarios, mis citas, historial, ticket
     doctor/             Agenda, registrar atención, cambio de fecha, derivación y solicitudes
-    admin/              Indicadores, responder solicitudes, crear horarios y campañas
+    admin/              Indicadores, responder solicitudes, crear horarios, campañas y reportes
     campanias/          Campañas vigentes, inscripción y comprobante del paciente
     portal/             Barra, notificaciones y estructura común de los portales
   hooks/                Consultas con SWR (use-citas, use-doctor, use-admin, use-campanias,
@@ -199,6 +211,7 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `POST`  | `/citas`                                                            | `{ idHorario }` → cita con ticket. 409 si otro paciente ganó el cupo |
 | `GET`   | `/citas/mias`                                                       | Citas activas del paciente                              |
 | `PATCH` | `/citas/{id}/cancelar`                                              | Cancela y libera el turno                               |
+| `PATCH` | `/citas/{id}/confirmar`                                             | El paciente confirma su asistencia: RESERVADA pasa a CONFIRMADA. 409 si ya no se puede |
 | `GET`   | `/citas/{id}/ticket`                                                | PDF del ticket                                          |
 | `GET`   | `/pacientes/me/historial`                                           | Atenciones (asistió / no asistió)                       |
 | `GET`   | `/pacientes/me/documentos`                                          | Documentos médicos                                      |
@@ -213,6 +226,7 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/tipos-documento`                                           | Tipos de documento médico                               |
 | `POST`  | `/doctor/atenciones/{id}/documentos`                                | Multipart `tipoDocumento` + `archivo` (PDF, JPG o PNG, hasta 5 MB) |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
+| `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
 | `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |
 | `PATCH` | `/admin/solicitudes/{id}`                                           | `{ decision: APROBAR\|RECHAZAR, respuesta? }` (el motivo es obligatorio al rechazar). 409 si ya se respondió |
 | `GET`   | `/admin/tickets/{numero}`                                           | Cita del ticket y si puede pasar (`resultado`: `VALIDO`, `YA_VALIDADO`, `OTRO_DIA`, `NO_ACTIVA`) |

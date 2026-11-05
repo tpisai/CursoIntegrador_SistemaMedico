@@ -3,6 +3,7 @@ import { PortalShell } from "@/components/portal/portal-shell"
 const ENLACES = [
   { href: "/admin", texto: "Inicio", exacto: true },
   { href: "/admin/comunicacion", texto: "Comunicación" },
+  { href: "/admin/reportes", texto: "Reportes" },
 ]
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {

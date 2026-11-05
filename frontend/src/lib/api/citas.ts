@@ -19,6 +19,10 @@ export function reservarCita(datos: ReservarCitaRequest) {
   return request<Cita>("POST", "/citas", datos)
 }
 
+export function confirmarAsistencia(idCita: number) {
+  return request<Cita>("PATCH", `/citas/${idCita}/confirmar`)
+}
+
 export function cancelarCita(idCita: number) {
   return request<Cita>("PATCH", `/citas/${idCita}/cancelar`)
 }

@@ -67,7 +67,7 @@ public class CitaService {
         Cita cita = new Cita();
         cita.setPaciente(paciente);
         cita.setHorario(horario);
-        cita.setEstado(Cita.CONFIRMADA);
+        cita.setEstado(Cita.RESERVADA);
         cita.setMotivo(datos.motivo() == null || datos.motivo().isBlank() ? null : datos.motivo().trim());
         cita.setNumeroTicket(Formato.ticket(citaRepository.siguienteTicket()));
         citaRepository.save(cita);
@@ -76,9 +76,9 @@ public class CitaService {
         String cuando = Formato.diaHora(horario.getFecha(), horario.getHoraInicio());
         String especialidad = detalle.getHorario().getDoctor().getEspecialidad().getNombre();
         notificacionService.crear(paciente.getUsuario(), Notificacion.CITA,
-                "Cita confirmada · " + cita.getNumeroTicket(),
+                "Cita reservada · " + cita.getNumeroTicket(),
                 especialidad + " con " + detalle.getHorario().getDoctor().getUsuario().getNombreCorto() + " el " + cuando
-                        + " en " + horario.getConsultorio().getUbicacion() + ". Presenta tu ticket en recepción.");
+                        + " en " + horario.getConsultorio().getUbicacion() + ". Confirma tu asistencia en Mis citas y presenta tu ticket en recepción.");
         notificacionService.crear(detalle.getHorario().getDoctor().getUsuario(), Notificacion.CITA,
                 "Nueva cita asignada",
                 Formato.nombrePaciente(paciente.getUsuario()) + " reservó una cita para el " + cuando + ".");
@@ -91,6 +91,16 @@ public class CitaService {
                 .stream().map(this::respuesta).toList();
     }
 
+    /** El paciente avisa que asistirá: su cita pasa de reservada a confirmada (EDT 4.12). */
+    public CitaResponse confirmar(UsuarioSesion sesion, Integer idCita) {
+        Cita cita = citaDelPaciente(sesion, idCita);
+        if (!Cita.RESERVADA.equals(cita.getEstado()) || cita.getHorario().yaPaso(LocalDateTime.now())) {
+            throw ApiException.conflicto("Esta cita ya no se puede confirmar.");
+        }
+        cita.setEstado(Cita.CONFIRMADA);
+        return respuesta(cita);
+    }
+
     public CitaResponse cancelar(UsuarioSesion sesion, Integer idCita) {
         Cita cita = citaDelPaciente(sesion, idCita);
         if (!cita.estaActiva()) throw ApiException.conflicto("Esta cita ya no se puede cancelar.");
@@ -99,7 +109,8 @@ public class CitaService {
         Horario horario = cita.getHorario();
         horario.setEstado(Horario.CANCELADO);
         // cita.id_horario es UNIQUE: el horario queda con la cita cancelada y se abre uno nuevo para el mismo turno.
-        if (!horario.yaPaso(LocalDateTime.now())) {
+        boolean turnoLibre = !horario.yaPaso(LocalDateTime.now());
+        if (turnoLibre) {
             horarioRepository.save(new Horario(horario.getDoctor(), horario.getConsultorio(), horario.getFecha(),
                     horario.getHoraInicio(), horario.getHoraFin()));
         }
@@ -107,7 +118,8 @@ public class CitaService {
         notificacionService.crear(horario.getDoctor().getUsuario(), Notificacion.CITA,
                 "Cita cancelada por el paciente",
                 Formato.nombrePaciente(cita.getPaciente().getUsuario()) + " canceló su cita del "
-                        + Formato.diaHora(horario.getFecha(), horario.getHoraInicio()) + ". El turno quedó libre.");
+                        + Formato.diaHora(horario.getFecha(), horario.getHoraInicio())
+                        + (turnoLibre ? ". El turno quedó libre." : "."));
         return respuesta(cita);
     }
 

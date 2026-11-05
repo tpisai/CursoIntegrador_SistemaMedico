@@ -28,6 +28,10 @@ public class CorreoService {
         this.remitente = remitente;
     }
 
+    public boolean configurado() {
+        return mailSender.getIfAvailable() != null;
+    }
+
     /** Devuelve true si el correo salió por SMTP. Un fallo de envío no interrumpe al que llama. */
     public boolean enviar(Usuario destinatario, String asunto, String texto) {
         JavaMailSender sender = mailSender.getIfAvailable();

@@ -42,8 +42,10 @@ public class CatalogoService {
                 .toList();
     }
 
+    /** Sin consultorio no hay turnos que reservar: es el caso del personal de emergencia. */
     public List<DoctorResponse> doctores(Integer idEspecialidad) {
         return doctorRepository.findByEspecialidad_IdEspecialidadAndEstadoOrderByIdDoctor(idEspecialidad, "ACTIVO").stream()
+                .filter(d -> !d.getConsultorios().isEmpty())
                 .map(d -> new DoctorResponse(d.getIdDoctor(), idEspecialidad, d.getUsuario().getNombreCorto()))
                 .toList();
     }

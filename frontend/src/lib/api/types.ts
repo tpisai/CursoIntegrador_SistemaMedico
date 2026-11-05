@@ -174,6 +174,18 @@ export interface Solicitud {
   respuestaAdmin: string | null
 }
 
+export interface MedicamentoRequest {
+  nombreMedicamento: string
+  dosis?: string
+  cantidad?: string
+  viaAdministracion?: string
+  presentacion?: string
+  unidadesPorToma?: string
+  frecuencia?: string
+  duracion?: string
+  orden?: number
+}
+
 export interface RegistrarAtencionRequest {
   asistio: boolean
   anamnesis?: string
@@ -181,6 +193,7 @@ export interface RegistrarAtencionRequest {
   diagnostico?: string
   tratamiento?: string
   observaciones?: string
+  medicamentos?: MedicamentoRequest[]
 }
 
 export interface AtencionRegistrada {

@@ -23,7 +23,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.cis.citas_salud.service.RecetaMedicaService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -33,9 +38,11 @@ import java.util.List;
 public class DoctorController {
 
     private final DoctorService doctorService;
+    private final RecetaMedicaService recetaMedicaService;
 
-    public DoctorController(DoctorService doctorService) {
+    public DoctorController(DoctorService doctorService, RecetaMedicaService recetaMedicaService) {
         this.doctorService = doctorService;
+        this.recetaMedicaService = recetaMedicaService;
     }
 
     @GetMapping("/citas")
@@ -90,5 +97,21 @@ public class DoctorController {
                                             @RequestParam("tipoDocumento") String tipoDocumento,
                                             @RequestParam("archivo") MultipartFile archivo) {
         return doctorService.subirDocumento(sesion, idAtencion, tipoDocumento, archivo);
+    }
+    @GetMapping("/atenciones/{id}/receta")
+    public ResponseEntity<byte[]> descargarReceta(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idAtencion) {
+
+        byte[] pdf = recetaMedicaService.generarReceta(sesion, idAtencion);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("receta-" + idAtencion + ".pdf", StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(pdf);
     }
 }

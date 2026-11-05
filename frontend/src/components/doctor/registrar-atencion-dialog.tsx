@@ -255,7 +255,7 @@ export function RegistrarAtencionDialog({
                           id="atencion-archivo"
                           type="file"
                           accept="application/pdf,image/jpeg,image/png"
-                          className="h-10"
+                          className="h-11"
                           aria-invalid={!!errores.archivo}
                           onChange={(e) => actualizar("archivo", e.target.files?.[0] ?? null)}
                         />

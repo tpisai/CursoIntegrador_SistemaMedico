@@ -5,7 +5,7 @@ import { setSesion } from "./session-store"
 
 // Pantalla inicial de cada rol. El rol ADMISION llega en una siguiente entrega.
 export const INICIO_POR_ROL: Partial<Record<Rol, string>> = {
-  PACIENTE: "/paciente/agendar",
+  PACIENTE: "/paciente",
   DOCTOR: "/doctor",
   ADMINISTRADOR: "/admin",
 }

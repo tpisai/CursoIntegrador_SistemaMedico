@@ -59,13 +59,13 @@ export function CalendarioDisponibilidad({
             modifiers={{ conCupos: (dia) => conCupos.has(toFechaISO(dia)) }}
             modifiersClassNames={{
               conCupos:
-                "[&>button]:bg-accent [&>button]:font-semibold [&>button]:text-accent-foreground [&>button]:hover:bg-primary/20",
+                "[&>button]:bg-accent [&>button]:font-semibold [&>button]:text-accent-foreground [&>button:not([data-selected-single=true])]:hover:bg-primary/20",
             }}
             formatters={{
               formatCaption: formatMesAnio,
               formatWeekdayName: formatDiaSemana,
             }}
-            className="w-full bg-transparent p-0 [--cell-size:--spacing(9)]"
+            className="w-full bg-transparent p-0 [--cell-size:--spacing(11)]"
             classNames={{
               root: "w-full",
               months: "relative flex flex-col",
@@ -76,8 +76,8 @@ export function CalendarioDisponibilidad({
               weekdays: "flex gap-1.5",
               weekday: "flex-1 text-xs font-medium text-muted-foreground select-none",
               week: "mt-1.5 flex w-full gap-1.5",
-              day: "relative flex-1 rounded-(--cell-radius) p-0 text-center select-none",
-              day_button: "aspect-auto h-(--cell-size) text-sm",
+              day: "relative min-w-0 flex-1 rounded-(--cell-radius) p-0 text-center select-none",
+              day_button: "aspect-auto h-(--cell-size) min-w-0 text-sm",
             }}
           />
           {cargando ? (

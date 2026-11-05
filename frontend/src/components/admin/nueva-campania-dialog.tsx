@@ -114,7 +114,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                 id="campania-titulo"
                 placeholder="Ej. Vacunación contra la influenza"
                 maxLength={150}
-                className="h-10"
+                className="h-11"
                 aria-invalid={!!errores.titulo}
                 value={datos.titulo}
                 onChange={(e) => actualizar({ titulo: e.target.value })}
@@ -138,7 +138,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                   id="campania-inicio"
                   type="date"
                   min={hoy}
-                  className="h-10"
+                  className="h-11"
                   aria-invalid={!!errores.fechaInicio}
                   value={datos.fechaInicio}
                   onChange={(e) =>
@@ -153,7 +153,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                   id="campania-fin"
                   type="date"
                   min={datos.fechaInicio || hoy}
-                  className="h-10"
+                  className="h-11"
                   aria-invalid={!!errores.fechaFin}
                   value={datos.fechaFin}
                   onChange={(e) => actualizar({ fechaFin: e.target.value })}
@@ -168,7 +168,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                   id="campania-lugar"
                   placeholder="Ej. Patio principal del centro de salud"
                   maxLength={255}
-                  className="h-10"
+                  className="h-11"
                   value={datos.lugar}
                   onChange={(e) => actualizar({ lugar: e.target.value })}
                 />
@@ -179,7 +179,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                   id="campania-hora"
                   type="time"
                   step={300}
-                  className="h-10"
+                  className="h-11"
                   value={datos.hora}
                   onChange={(e) => actualizar({ hora: e.target.value })}
                 />
@@ -194,7 +194,7 @@ export function NuevaCampaniaDialog({ open, onOpenChange }: { open: boolean; onO
                 min={1}
                 max={10000}
                 placeholder="Ej. 100"
-                className="h-10 sm:max-w-40"
+                className="h-11 sm:max-w-40"
                 aria-invalid={!!errores.cupos}
                 value={datos.cupos}
                 onChange={(e) => actualizar({ cupos: e.target.value })}

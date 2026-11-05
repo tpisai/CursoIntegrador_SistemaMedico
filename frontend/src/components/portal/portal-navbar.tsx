@@ -2,10 +2,11 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LogOutIcon, MenuIcon } from "lucide-react"
+import { CalendarPlusIcon, LogOutIcon, MenuIcon } from "lucide-react"
 
 import { Logo } from "@/components/brand/logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -58,17 +59,17 @@ export function PortalNavbar({
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-brand-strong text-brand-foreground">
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:gap-6 sm:px-8 lg:h-[72px] lg:gap-8">
+    <header className="sticky top-0 z-40 border-b bg-card text-foreground">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-3 px-4 sm:gap-6 sm:px-8 lg:h-[72px] lg:gap-8">
         <div className="flex items-center gap-3">
-          <Link href={enlaces[0].href} className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-white/50">
-            <Logo className="text-lg" markClassName="size-[30px]" />
+          <Link href={enlaces[0].href} className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            <Logo sobreClaro className="text-lg" markClassName="size-[30px]" textoClassName="max-sm:sr-only" />
           </Link>
           {etiquetaRol ? (
             // En móvil no entra junto a la campana y el menú; el menú lateral ya muestra el rol.
-            <span className="hidden rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase sm:inline">
+            <Badge variant="secondary" className="hidden sm:inline-flex">
               {etiquetaRol}
-            </span>
+            </Badge>
           ) : null}
         </div>
 
@@ -79,7 +80,7 @@ export function PortalNavbar({
                 <Link
                   href={enlace.href}
                   aria-current={esActivo(pathname, enlace) ? "page" : undefined}
-                  className="relative flex h-full items-center text-sm font-medium text-brand-foreground/75 outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-brand-foreground after:opacity-0 hover:text-brand-foreground focus-visible:underline aria-[current=page]:font-semibold aria-[current=page]:text-brand-foreground aria-[current=page]:after:opacity-100"
+                  className="relative flex h-full items-center text-sm font-medium text-muted-foreground outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-primary after:opacity-0 hover:text-foreground focus-visible:underline aria-[current=page]:font-semibold aria-[current=page]:text-primary aria-[current=page]:after:opacity-100"
                 >
                   {enlace.texto}
                 </Link>
@@ -89,13 +90,21 @@ export function PortalNavbar({
         </nav>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          {usuario.rol === "PACIENTE" ? (
+            <Button asChild size="lg" className="mr-1 h-10 px-3.5">
+              <Link href="/paciente/agendar">
+                <CalendarPlusIcon data-icon="inline-start" />
+                Agendar cita
+              </Link>
+            </Button>
+          ) : null}
           <NotificacionesMenu />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full bg-white/10 p-1.5 text-sm outline-none hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-white/50 sm:pr-3.5"
+                className="flex items-center gap-2 rounded-full bg-muted p-1.5 text-sm outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 sm:pr-3.5"
               >
                 <Avatar size="sm" className="size-7 after:border-transparent">
                   <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
@@ -127,11 +136,7 @@ export function PortalNavbar({
 
           <Sheet>
             <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="text-brand-foreground hover:bg-white/10 hover:text-brand-foreground lg:hidden"
-              >
+              <Button variant="ghost" size="icon-lg" className="lg:hidden">
                 <MenuIcon />
                 <span className="sr-only">Abrir menú</span>
               </Button>

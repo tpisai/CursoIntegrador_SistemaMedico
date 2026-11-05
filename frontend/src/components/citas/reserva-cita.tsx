@@ -4,6 +4,8 @@ import { useState, useTransition } from "react"
 import { useSWRConfig } from "swr"
 import { toast } from "sonner"
 
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { CalendarioDisponibilidad } from "@/components/citas/calendario-disponibilidad"
 import { FiltrosDisponibilidad } from "@/components/citas/filtros-disponibilidad"
 import { SelectorHorarios } from "@/components/citas/selector-horarios"
@@ -19,7 +21,7 @@ import { reservarCita, rutas } from "@/lib/api/citas"
 import { ApiError, mensajeDeError } from "@/lib/api/http"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import type { Horario } from "@/lib/api/types"
-import { toMesISO } from "@/lib/format"
+import { formatDiaCorto, toMesISO } from "@/lib/format"
 
 const MESES_A_FUTURO = 2
 
@@ -62,6 +64,7 @@ export function ReservaCita() {
   const mes = mesElegido ?? mesAutomatico
   const disponibilidad = useDisponibilidad(idDoctor, idConsultorio, toMesISO(mes))
   const horarios = useHorarios(idDoctor, idConsultorio, fecha)
+  const elegido = horarios.data?.find((h) => h.idHorario === idHorario && h.estado === "DISPONIBLE")
 
   function limpiarFecha() {
     setMesElegido(null)
@@ -116,7 +119,7 @@ export function ReservaCita() {
     <>
       <section
         aria-label="Reservar cita"
-        className="grid gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_300px]"
+        className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_300px]"
       >
         <FiltrosDisponibilidad
           especialidades={especialidades.data}
@@ -157,6 +160,20 @@ export function ReservaCita() {
           />
         </div>
       </section>
+
+      {/* En móvil el botón de la tarjeta queda fuera de la pantalla: la confirmación acompaña al paciente. */}
+      {elegido && fecha ? (
+        <div className="sticky bottom-0 z-30 -mx-4 -mb-6 flex items-center justify-between gap-4 border-t bg-card px-4 py-3 sm:-mx-8 sm:px-8 md:hidden">
+          <div className="flex min-w-0 flex-col">
+            <span className="text-sm text-muted-foreground">{formatDiaCorto(fecha)}</span>
+            <span className="text-lg font-semibold">{elegido.horaInicio}</span>
+          </div>
+          <Button size="xl" disabled={reservando} onClick={() => confirmar(elegido)}>
+            {reservando ? <Spinner data-icon="inline-start" /> : null}
+            Confirmar cita
+          </Button>
+        </div>
+      ) : null}
 
       <TicketCitaDialog
         ticket={ticket}

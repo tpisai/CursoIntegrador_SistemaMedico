@@ -84,7 +84,7 @@ export function ValidarTicketCard() {
                 id="ticket-numero"
                 placeholder="A-0154"
                 autoComplete="off"
-                className="h-10 font-mono uppercase"
+                className="h-11 font-mono uppercase"
                 aria-invalid={!!errorCampo}
                 value={numero}
                 onChange={(e) => {
@@ -94,7 +94,7 @@ export function ValidarTicketCard() {
               />
               <FieldError>{errorCampo}</FieldError>
             </Field>
-            <Button type="submit" size="lg" className="h-10" disabled={buscando}>
+            <Button type="submit" size="lg" className="h-11" disabled={buscando}>
               {buscando ? <Spinner data-icon="inline-start" /> : <SearchIcon data-icon="inline-start" />}
               Buscar
             </Button>

@@ -31,7 +31,14 @@ import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import type { Cita } from "@/lib/api/types"
 import { formatDiaCorto, formatDiaHora } from "@/lib/format"
 
-export function MisCitasCard({ mostrarAgendar = false }: { mostrarAgendar?: boolean }) {
+export function MisCitasCard({
+  mostrarAgendar = false,
+  conTicket = true,
+}: {
+  mostrarAgendar?: boolean
+  // El inicio ya muestra la próxima cita arriba.
+  conTicket?: boolean
+}) {
   const { data: citas, error, isLoading, mutate: recargar } = useMisCitas()
   const { mutate } = useSWRConfig()
   const [ticket, setTicket] = useState<EstadoTicket | null>(null)
@@ -102,8 +109,43 @@ export function MisCitasCard({ mostrarAgendar = false }: { mostrarAgendar?: bool
           </Empty>
         ) : (
           <>
-            <Table>
-              <TableHeader>
+            <ul className="flex flex-col gap-3 md:hidden">
+              {citas.map((cita) => (
+                <li key={cita.idCita}>
+                  <Card size="sm">
+                    <CardContent className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="font-semibold">{formatDiaHora(cita.fecha, cita.horaInicio)}</span>
+                          <span className="text-muted-foreground">
+                            {cita.especialidad}, {cita.doctor}
+                          </span>
+                        </div>
+                        <EstadoCitaBadge estado={cita.estado} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          className="h-11"
+                          onClick={() => setTicket({ cita, recienReservada: false, abierto: true })}
+                        >
+                          Ver ticket
+                          <span className="sr-only"> {cita.numeroTicket}</span>
+                        </Button>
+                        <Button variant="destructive" className="h-11" onClick={() => setPorCancelar(cita)}>
+                          Cancelar
+                          <span className="sr-only"> cita del {formatDiaCorto(cita.fecha)}</span>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
                 <TableRow>
                   <TableHead>Fecha / hora</TableHead>
                   <TableHead>Especialidad</TableHead>
@@ -143,16 +185,17 @@ export function MisCitasCard({ mostrarAgendar = false }: { mostrarAgendar?: bool
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
 
-            {proxima ? (
+            {conTicket && proxima ? (
               <Alert
                 variant="brand"
                 role="note"
                 className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-5"
               >
                 <div className="flex shrink-0 flex-col">
-                  <span className="text-[11px] font-semibold tracking-wider uppercase">Ticket de atención</span>
+                  <span className="text-xs font-semibold">Ticket de atención</span>
                   <span className="text-xl font-bold text-primary">N.° {proxima.numeroTicket}</span>
                 </div>
                 <AlertDescription className="flex-1">

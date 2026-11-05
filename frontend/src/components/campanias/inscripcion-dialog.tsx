@@ -83,7 +83,7 @@ export function InscripcionDialog({ estado, onCerrar }: { estado: EstadoInscripc
                 <DialogDescription>{campania.titulo}</DialogDescription>
               </DialogHeader>
               <div className="flex flex-col items-center gap-1 rounded-xl bg-secondary px-6 py-4 text-center">
-                <span className="text-[11px] font-semibold tracking-wider text-secondary-foreground uppercase">
+                <span className="text-xs font-semibold text-secondary-foreground">
                   Comprobante de inscripción
                 </span>
                 <span className="text-3xl font-bold tracking-tight text-primary">N.° {inscripcion.codigo}</span>

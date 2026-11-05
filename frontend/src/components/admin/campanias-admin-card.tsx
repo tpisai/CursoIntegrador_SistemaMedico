@@ -25,7 +25,7 @@ export function CampaniasAdminCard() {
         {isLoading ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 3 }, (_, i) => (
-              <Skeleton key={i} className="h-10" />
+              <Skeleton key={i} className="h-11" />
             ))}
           </div>
         ) : error ? (

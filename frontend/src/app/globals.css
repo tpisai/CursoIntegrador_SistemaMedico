@@ -58,30 +58,31 @@
 
 /*
  * Paleta tomada del prototipo de Figma (teal + slate de Tailwind):
- * primary = teal-600 #0d9488, brand = teal-900 #134e4a,
- * texto = slate-900 #0f172a, texto secundario = slate-500 #64748b,
- * bordes = slate-200 #e2e8f0, fondo = slate-100 #f1f5f9.
+ * primary = teal-700 #0f766e, brand-strong = teal-900 #134e4a,
+ * texto = slate-900 #0f172a, texto secundario = slate-600 #475569,
+ * bordes = slate-200 #e2e8f0, fondo = slate-50 #f8fafc.
+ * Primary y el texto secundario son un tono más oscuro que en Figma para cumplir el contraste AA.
  */
 :root {
-  --background: oklch(96.8% 0.007 247.896);
+  --background: oklch(98.4% 0.003 247.858);
   --foreground: oklch(20.8% 0.042 265.755);
   --card: oklch(1 0 0);
   --card-foreground: oklch(20.8% 0.042 265.755);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(20.8% 0.042 265.755);
-  --primary: oklch(60% 0.118 184.704);
+  --primary: oklch(51.1% 0.096 186.391);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(98.4% 0.014 180.72);
   --secondary-foreground: oklch(51.1% 0.096 186.391);
   --muted: oklch(96.8% 0.007 247.896);
-  --muted-foreground: oklch(55.4% 0.046 257.417);
+  --muted-foreground: oklch(44.6% 0.043 257.281);
   --accent: oklch(95.3% 0.051 180.801);
   --accent-foreground: oklch(43.7% 0.078 188.216);
-  --destructive: oklch(57.7% 0.245 27.325);
+  --destructive: oklch(50.5% 0.213 27.518);
   --border: oklch(92.9% 0.013 255.508);
   --input: oklch(92.9% 0.013 255.508);
-  --ring: oklch(60% 0.118 184.704);
-  --brand: oklch(60% 0.118 184.704);
+  --ring: oklch(51.1% 0.096 186.391);
+  --brand: oklch(51.1% 0.096 186.391);
   --brand-strong: oklch(38.6% 0.063 188.416);
   --brand-foreground: oklch(1 0 0);
   --success: oklch(96.2% 0.044 156.743);
@@ -96,12 +97,12 @@
   --radius: 0.625rem;
   --sidebar: oklch(98.4% 0.003 247.858);
   --sidebar-foreground: oklch(20.8% 0.042 265.755);
-  --sidebar-primary: oklch(60% 0.118 184.704);
+  --sidebar-primary: oklch(51.1% 0.096 186.391);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(95.3% 0.051 180.801);
   --sidebar-accent-foreground: oklch(43.7% 0.078 188.216);
   --sidebar-border: oklch(92.9% 0.013 255.508);
-  --sidebar-ring: oklch(60% 0.118 184.704);
+  --sidebar-ring: oklch(51.1% 0.096 186.391);
 }
 
 .dark {

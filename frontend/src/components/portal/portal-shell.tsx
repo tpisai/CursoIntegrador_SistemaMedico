@@ -42,9 +42,15 @@ export function PortalShell({
   return (
     <>
       <PortalNavbar usuario={sesion.usuario} enlaces={enlaces} etiquetaRol={etiquetaRol} />
-      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:py-8">
+      <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-6 px-4 py-6 sm:px-8 lg:gap-8 lg:py-8">
         {children}
       </main>
+      <footer className="border-t bg-card">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-1 px-4 py-5 text-sm text-muted-foreground sm:flex-row sm:justify-between sm:gap-6 sm:px-8">
+          <span>Centro de Salud Miguel Grau, Chaclacayo</span>
+          {rol === "PACIENTE" ? <span>En una emergencia no reserves cita: acude al área de Emergencia.</span> : null}
+        </div>
+      </footer>
     </>
   )
 }

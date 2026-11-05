@@ -818,6 +818,28 @@ CREATE TABLE notificacion (
 );
 
 -- ============================================================
+-- DETALLE_MEDICAMENTO
+-- Registra los medicamentos recetados durante una atención médica.
+-- ============================================================
+CREATE TABLE detalle_medicamento (
+    id_detalle SERIAL PRIMARY KEY,
+    id_atencion INTEGER NOT NULL,
+    nombre_medicamento VARCHAR(200) NOT NULL,
+    dosis VARCHAR(100),
+    cantidad VARCHAR(50),
+    via_administracion VARCHAR(100),
+    presentacion VARCHAR(100),
+    unidades_por_toma VARCHAR(50),
+    frecuencia VARCHAR(100),
+    duracion VARCHAR(100),
+    orden INTEGER DEFAULT 1,
+
+    CONSTRAINT fk_detalle_medicamento_atencion
+        FOREIGN KEY (id_atencion)
+        REFERENCES atencion(id_atencion)
+        ON DELETE CASCADE
+);
+-- ============================================================
 -- ÍNDICES
 -- ============================================================
 
@@ -984,6 +1006,7 @@ CREATE INDEX idx_notificacion_leida
 
 CREATE INDEX idx_notificacion_fecha
     ON notificacion(fecha_envio);
+
 
 -- ============================================================
 -- FIN DEL SCRIPT

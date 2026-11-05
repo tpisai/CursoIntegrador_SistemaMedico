@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "atencion")
@@ -51,4 +53,11 @@ public class Atencion {
 
     @Column(name = "observaciones", columnDefinition = "text")
     private String observaciones;
+    @OneToMany(
+            mappedBy = "atencion",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("orden ASC, idDetalle ASC")
+    private List<DetalleMedicamento> medicamentos = new ArrayList<>();
 }

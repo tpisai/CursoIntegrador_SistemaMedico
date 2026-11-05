@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useSWRConfig } from "swr"
-import { CircleAlertIcon, UserCheckIcon, UserXIcon } from "lucide-react"
+import { CircleAlertIcon, UserCheckIcon, UserXIcon, PlusIcon, Trash2Icon, FileDownIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -15,10 +15,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { CampoSelect } from "@/components/portal/campo-select"
 import { useTiposDocumento } from "@/hooks/use-doctor"
-import { registrarAtencion, subirDocumento } from "@/lib/api/doctor"
+import { registrarAtencion, subirDocumento, descargarReceta } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import type { CitaAsignada } from "@/lib/api/types"
+import type { MedicamentoRequest } from "@/lib/api/types"
 import { formatDiaHora } from "@/lib/format"
 
 const MAX_ARCHIVO = 5 * 1024 * 1024
@@ -73,11 +74,14 @@ export function RegistrarAtencionDialog({
 }) {
   const { mutate } = useSWRConfig()
   const tipos = useTiposDocumento()
+  const [medicamentos, setMedicamentos] = useState<MedicamentoRequest[]>([])
   const [datos, setDatos] = useState<Datos>(VACIO)
   const [errores, setErrores] = useState<Errores>({})
   const [errorApi, setErrorApi] = useState<string | null>(null)
   // Cambiar la clave vacía el campo de archivo, que no se puede limpiar por código.
   const [claveArchivo, setClaveArchivo] = useState(0)
+  const [idAtencionRegistrada, setIdAtencionRegistrada] = useState<number | null>(null)
+  const [descargandoReceta, setDescargandoReceta] = useState(false)
   const [guardando, startTransition] = useTransition()
   const asistio = datos.asistio === "SI"
 
@@ -92,7 +96,66 @@ export function RegistrarAtencionDialog({
     setErrores({})
     setErrorApi(null)
     setClaveArchivo((k) => k + 1)
+    setMedicamentos([])
+    setIdAtencionRegistrada(null)
     onCerrar()
+  }
+
+  async function onDescargarReceta() {
+    if (!idAtencionRegistrada) return
+    setDescargandoReceta(true)
+    try {
+      const archivo = await descargarReceta(idAtencionRegistrada)
+      const url = window.URL.createObjectURL(archivo)
+      const enlace = document.createElement("a")
+
+      enlace.href = url
+      enlace.download = `receta-${idAtencionRegistrada}.pdf`
+
+      document.body.appendChild(enlace)
+      enlace.click()
+      enlace.remove()
+
+      window.URL.revokeObjectURL(url)
+
+      toast.success("Receta médica descargada correctamente.")
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoReceta(false)
+    }
+  }
+
+  function agregarMedicamento() {
+    setMedicamentos((actuales) => [...actuales,
+      {
+        nombreMedicamento: "",
+        dosis: "",
+        cantidad: "",
+        viaAdministracion: "",
+        presentacion: "",
+        unidadesPorToma: "",
+        frecuencia: "",
+        duracion: "",
+        orden: actuales.length + 1,
+      },
+    ])
+  }
+
+  function actualizarMedicamento(
+    indice: number,
+    campo: keyof MedicamentoRequest,
+    valor: string
+  ) {
+    setMedicamentos((actuales) =>
+      actuales.map((medicamento, i) => i === indice ? { ...medicamento, [campo]: valor } : medicamento))
+  }
+
+  function eliminarMedicamento(indice: number) {
+    setMedicamentos((actuales) =>
+      actuales.filter((_, i) => i !== indice).map((medicamento, i) => ({
+        ...medicamento,orden: i + 1,}))
+    )
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -115,6 +178,7 @@ export function RegistrarAtencionDialog({
                 diagnostico: datos.diagnostico,
                 tratamiento: datos.tratamiento,
                 observaciones: datos.observaciones,
+                medicamentos: medicamentos.map((medicamento, indice) => ({ ...medicamento, orden: indice + 1 })),
               }
             : { asistio: false }
         )
@@ -130,11 +194,16 @@ export function RegistrarAtencionDialog({
             ? `Atención de ${cita.paciente} registrada en su historia clínica.`
             : `Registraste que ${cita.paciente} no asistió.`
         )
+        if (asistio && resultado.idAtencion) {
+          setIdAtencionRegistrada(resultado.idAtencion)
+        }
         await Promise.all([
           mutate((clave) => typeof clave === "string" && clave.startsWith("/doctor/citas")),
           mutate(RUTA_NOTIFICACIONES),
         ])
-        cerrar()
+        if (!asistio || !resultado.idAtencion) {
+          cerrar()
+        }
       } catch (error) {
         setErrorApi(mensajeDeError(error))
       }
@@ -154,6 +223,15 @@ export function RegistrarAtencionDialog({
           </DialogHeader>
 
           <form onSubmit={onSubmit} noValidate>
+           {idAtencionRegistrada ? (
+            <Alert>
+              <FileDownIcon />
+              <AlertDescription>
+                La atención se registró correctamente en la historia clínica.
+                Ya puedes descargar la receta médica en formato PDF.
+              </AlertDescription>
+            </Alert>
+          ) : (
             <FieldGroup className="gap-4">
               <Field>
                 <FieldTitle id="atencion-asistio">¿El paciente asistió?</FieldTitle>
@@ -224,24 +302,97 @@ export function RegistrarAtencionDialog({
                     />
                     <FieldError>{errores.tratamiento}</FieldError>
                   </Field>
+                  <FieldSet>
+                    <FieldLegend variant="label">Medicamentos recetados</FieldLegend>
+                    <FieldDescription>Agrega los medicamentos indicados al paciente.</FieldDescription>
+                    <div className="flex flex-col gap-4">
+                      {medicamentos.map((medicamento, indice) => (
+                        <div key={indice} className="rounded-lg border p-4">
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-sm font-semibold">Medicamento {indice + 1}</span>
+                            <Button type="button" variant="ghost" size="icon"
+                              onClick={() => eliminarMedicamento(indice)}
+                              aria-label={`Eliminar medicamento ${indice + 1}`}>
+                              <Trash2Icon className="size-4" />
+                            </Button>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <Field className="sm:col-span-2">
+                              <FieldLabel>Nombre del medicamento</FieldLabel>
+                              <Input placeholder="Ej. Paracetamol" value={medicamento.nombreMedicamento}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "nombreMedicamento", e.target.value)
+                                }
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Dosis</FieldLabel>
+                              <Input placeholder="Ej. 500 mg" value={medicamento.dosis ?? ""}
+                                onChange={(e) => actualizarMedicamento(indice, "dosis", e.target.value)}
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Presentación</FieldLabel>
+                              <Input placeholder="Ej. Tableta" value={medicamento.presentacion ?? ""}
+                                onChange={(e) => actualizarMedicamento(indice, "presentacion", e.target.value)}
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Vía de administración</FieldLabel>
+                              <Input placeholder="Ej. Oral" value={medicamento.viaAdministracion ?? ""}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "viaAdministracion", e.target.value)}
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Unidades por toma</FieldLabel>
+                              <Input placeholder="Ej. 1 tableta" value={medicamento.unidadesPorToma ?? ""}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "unidadesPorToma", e.target.value)}
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Frecuencia</FieldLabel>
+                              <Input placeholder="Ej. Cada 8 horas" value={medicamento.frecuencia ?? ""}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "frecuencia", e.target.value)}
+                              />
+                            </Field>
+                            <Field>
+                              <FieldLabel>Duración</FieldLabel>
+                              <Input placeholder="Ej. 3 días" value={medicamento.duracion ?? ""}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "duracion", e.target.value)}
+                              />
+                            </Field>
+                            <Field className="sm:col-span-2">
+                              <FieldLabel>Cantidad total</FieldLabel>
+                              <Input placeholder="Ej. 9 tabletas" value={medicamento.cantidad ?? ""}
+                                onChange={(e) => actualizarMedicamento(
+                                    indice, "cantidad", e.target.value)}
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" className="w-full" onClick={agregarMedicamento}>
+                        <PlusIcon data-icon="inline-start" />
+                        Agregar medicamento
+                      </Button>
+                    </div>
+                  </FieldSet>
                   <Field>
                     <FieldLabel htmlFor="atencion-observaciones">Observaciones</FieldLabel>
-                    <Textarea
-                      id="atencion-observaciones"
-                      placeholder="Ej. Control en una semana."
-                      maxLength={2000}
-                      value={datos.observaciones}
+                    <Textarea id="atencion-observaciones" placeholder="Ej. Control en una semana."
+                      maxLength={2000} value={datos.observaciones}
                       onChange={(e) => actualizar("observaciones", e.target.value)}
                     />
                   </Field>
-
                   <FieldSet>
                     <FieldLegend variant="label">Documento adjunto (opcional)</FieldLegend>
                     <FieldDescription>Receta, resultados o informe. El paciente podrá descargarlo.</FieldDescription>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <CampoSelect
-                        id="atencion-tipo-documento"
-                        etiqueta="Tipo de documento"
+                      <CampoSelect id="atencion-tipo-documento" etiqueta="Tipo de documento"
                         placeholder="Elige el tipo"
                         opciones={tipos.data?.map((t) => ({ valor: t, texto: t }))}
                         valor={datos.tipoDocumento}
@@ -250,13 +401,9 @@ export function RegistrarAtencionDialog({
                       />
                       <Field data-invalid={!!errores.archivo}>
                         <FieldLabel htmlFor="atencion-archivo">Archivo (PDF, JPG o PNG, hasta 5 MB)</FieldLabel>
-                        <Input
-                          key={claveArchivo}
-                          id="atencion-archivo"
-                          type="file"
-                          accept="application/pdf,image/jpeg,image/png"
-                          className="h-11"
-                          aria-invalid={!!errores.archivo}
+                        <Input key={claveArchivo} id="atencion-archivo"
+                          type="file" accept="application/pdf,image/jpeg,image/png"
+                          className="h-11" aria-invalid={!!errores.archivo}
                           onChange={(e) => actualizar("archivo", e.target.files?.[0] ?? null)}
                         />
                         <FieldError>{errores.archivo}</FieldError>
@@ -280,17 +427,35 @@ export function RegistrarAtencionDialog({
                   <AlertDescription>{errorApi}</AlertDescription>
                 </Alert>
               ) : null}
-            </FieldGroup>
-
+              </FieldGroup>
+            )}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" size="lg" onClick={cerrar} disabled={guardando}>
-                Cancelar
-              </Button>
-              <Button type="submit" size="lg" disabled={guardando}>
-                {guardando ? <Spinner data-icon="inline-start" /> : null}
-                {asistio ? "Guardar atención" : "Registrar inasistencia"}
-              </Button>
-            </div>
+            {idAtencionRegistrada ? (
+              <>
+                <Button type="button" variant="outline" size="lg" onClick={cerrar}>
+                  Cerrar
+                </Button>
+                <Button type="button" size="lg" onClick={onDescargarReceta} disabled={descargandoReceta}>
+                  {descargandoReceta ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <FileDownIcon data-icon="inline-start" />
+                  )}
+                  {descargandoReceta ? "Descargando..." : "Descargar receta PDF"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="outline" size="lg" onClick={cerrar} disabled={guardando}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="lg" disabled={guardando}>
+                  {guardando ? <Spinner data-icon="inline-start" /> : null}
+                  {asistio ? "Guardar atención" : "Registrar inasistencia"}
+                </Button>
+              </>
+            )}
+          </div>
           </form>
         </DialogContent>
       ) : null}

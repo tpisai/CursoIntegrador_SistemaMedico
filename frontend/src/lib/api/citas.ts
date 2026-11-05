@@ -30,3 +30,7 @@ export function descargarTicket(idCita: number) {
 export function descargarDocumento(idDocumento: number) {
   return requestArchivo(`/documentos/${idDocumento}/descarga`)
 }
+
+export function descargarReceta(idCita: number) {
+  return requestArchivo(`/pacientes/me/citas/${idCita}/receta`)
+}

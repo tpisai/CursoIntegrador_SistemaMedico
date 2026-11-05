@@ -30,6 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.ObjectMapper;
+import com.cis.citas_salud.entity.DetalleMedicamento;
+import com.cis.citas_salud.repository.DetalleMedicamentoRepository;
+import com.cis.citas_salud.api.dto.DoctorDto.MedicamentoRequest;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -64,12 +67,13 @@ public class DoctorService {
     private final NotificacionService notificacionService;
     private final ObjectMapper objectMapper;
     private final Path carpetaArchivos;
+    private final DetalleMedicamentoRepository detalleMedicamentoRepository;
 
     public DoctorService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                          HorarioRepository horarioRepository, SolicitudRepository solicitudRepository,
                          UsuarioRepository usuarioRepository, AtencionRepository atencionRepository,
                          HistoriaClinicaRepository historiaRepository, DocumentoMedicoRepository documentoRepository,
-                         NotificacionService notificacionService, ObjectMapper objectMapper,
+                         DetalleMedicamentoRepository detalleMedicamentoRepository, NotificacionService notificacionService, ObjectMapper objectMapper,
                          @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
@@ -79,6 +83,7 @@ public class DoctorService {
         this.atencionRepository = atencionRepository;
         this.historiaRepository = historiaRepository;
         this.documentoRepository = documentoRepository;
+        this.detalleMedicamentoRepository = detalleMedicamentoRepository;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
         this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
@@ -190,6 +195,27 @@ public class DoctorService {
         atencion.setTratamiento(tratamiento);
         atencion.setObservaciones(textoOpcional(datos.observaciones()));
         atencionRepository.save(atencion);
+        // Registrar los medicamentos prescritos
+        if (datos.medicamentos() != null && !datos.medicamentos().isEmpty()) {
+            List<DetalleMedicamento> medicamentos = new java.util.ArrayList<>();
+            int orden = 1;
+            for (MedicamentoRequest medicamento : datos.medicamentos()) {
+                DetalleMedicamento detalle = new DetalleMedicamento();
+                detalle.setAtencion(atencion);
+                detalle.setNombreMedicamento(medicamento.nombreMedicamento().trim());
+                detalle.setDosis(textoOpcional(medicamento.dosis()));
+                detalle.setCantidad(textoOpcional(medicamento.cantidad()));
+                detalle.setViaAdministracion(textoOpcional(medicamento.viaAdministracion()));
+                detalle.setPresentacion(textoOpcional(medicamento.presentacion()));
+                detalle.setUnidadesPorToma(textoOpcional(medicamento.unidadesPorToma()));
+                detalle.setFrecuencia(textoOpcional(medicamento.frecuencia()));
+                detalle.setDuracion(textoOpcional(medicamento.duracion()));
+                detalle.setOrden(medicamento.orden() != null ? medicamento.orden() : orden);
+                medicamentos.add(detalle);
+                orden++;
+            }
+            detalleMedicamentoRepository.saveAll(medicamentos);
+        }
         cita.setEstado(Cita.ATENDIDA);
 
         notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.CITA, "Atención registrada",

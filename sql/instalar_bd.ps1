@@ -18,12 +18,12 @@ param(
     [string]$BaseDeDatos = "centro_salud",
     [string]$Usuario = "postgres",
     [string]$Servidor = "localhost",
-    [string]$Psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
+    [string]$Psql = "C:\Program Files\PostgreSQL\18\bin\psql.exe"
 )
 
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
-$configLocal = Join-Path $raiz "citas_salud\config\application.properties"
+$configLocal = Join-Path $raiz "citas_salud\src\main\resources\application.properties"
 
 if (-not (Test-Path $Psql)) { throw "No se encontró psql en '$Psql'. Pasa la ruta con -Psql." }
 if (-not (Test-Path $configLocal)) { throw "Falta $configLocal con la línea spring.datasource.password=..." }

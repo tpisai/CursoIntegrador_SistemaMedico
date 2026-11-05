@@ -1,8 +1,11 @@
 package com.cis.citas_salud.api.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public final class DoctorDto {
 
@@ -60,7 +63,8 @@ public final class DoctorDto {
             @Size(max = 2000, message = "El examen físico es demasiado largo.") String examenFisico,
             @Size(max = 2000, message = "El diagnóstico es demasiado largo.") String diagnostico,
             @Size(max = 2000, message = "El tratamiento es demasiado largo.") String tratamiento,
-            @Size(max = 2000, message = "Las observaciones son demasiado largas.") String observaciones) {
+            @Size(max = 2000, message = "Las observaciones son demasiado largas.") String observaciones,
+            List<@Valid MedicamentoRequest> medicamentos) {
     }
 
     public record AtencionResponse(
@@ -69,5 +73,24 @@ public final class DoctorDto {
             String estadoCita,
             // null si el paciente no asistió (no se crea atención).
             Integer idAtencion) {
+    }
+    public record MedicamentoRequest(
+            @NotBlank(message = "Ingresa el nombre del medicamento.")
+            @Size(max = 200)
+            String nombreMedicamento,
+            @Size(max = 100)
+            String dosis,
+            @Size(max = 50)
+            String cantidad,
+            @Size(max = 100)
+            String viaAdministracion,
+            @Size(max = 100)
+            String presentacion,
+            @Size(max = 50)
+            String unidadesPorToma,
+            @Size(max = 100)
+            String frecuencia,
+            @Size(max = 100)
+            String duracion, Integer orden) {
     }
 }

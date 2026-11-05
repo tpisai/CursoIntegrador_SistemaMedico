@@ -2,15 +2,19 @@
 #   1. citas_salud.sql         (tablas del equipo)
 #   2. 02_correlativo_ticket.sql (correlativo del número de ticket)
 #   3. 03_datos_iniciales.sql  (catálogos y datos de demostración)
+#   4. 04_recuperacion_pin.sql (tabla de códigos para recuperar el PIN)
+#   5. 05_profesionales_cmi.sql (profesionales del cartel del centro de salud)
 #
 # Uso (desde la carpeta del proyecto):
 #   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1
+#   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Actualizar  # agrega lo nuevo sin borrar datos
 #   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Reiniciar   # borra y vuelve a crear la base
 #
 # La contraseña se lee de citas_salud/config/application.properties (archivo local ignorado por git).
 
 param(
     [switch]$Reiniciar,
+    [switch]$Actualizar,
     [string]$BaseDeDatos = "centro_salud",
     [string]$Usuario = "postgres",
     [string]$Servidor = "localhost",
@@ -41,19 +45,28 @@ function Invoke-Psql([string]$db, [string[]]$argumentos) {
 $existe = & $Psql -h $Servidor -U $Usuario -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$BaseDeDatos'"
 if ($LASTEXITCODE -ne 0) { throw "No se pudo conectar a PostgreSQL. Revisa la contraseña." }
 
+# Estos scripts se pueden repetir sobre una base con datos: -Actualizar solo ejecuta estos.
+$actualizaciones = "04_recuperacion_pin.sql", "05_profesionales_cmi.sql"
+$scripts = @("citas_salud.sql", "02_correlativo_ticket.sql", "03_datos_iniciales.sql") + $actualizaciones
+
 if ($existe -eq "1") {
-    if (-not $Reiniciar) {
-        Write-Host "La base '$BaseDeDatos' ya existe. Usa -Reiniciar para borrarla y crearla de nuevo."
+    if ($Actualizar) {
+        $scripts = $actualizaciones
+    } elseif ($Reiniciar) {
+        Write-Host "Borrando la base '$BaseDeDatos'..."
+        Invoke-Psql "postgres" @("-c", "DROP DATABASE `"$BaseDeDatos`" WITH (FORCE)")
+    } else {
+        Write-Host "La base '$BaseDeDatos' ya existe. Usa -Actualizar para agregar lo nuevo sin borrar datos, o -Reiniciar para crearla de nuevo."
         exit 0
     }
-    Write-Host "Borrando la base '$BaseDeDatos'..."
-    Invoke-Psql "postgres" @("-c", "DROP DATABASE `"$BaseDeDatos`" WITH (FORCE)")
 }
 
-Write-Host "Creando la base '$BaseDeDatos'..."
-Invoke-Psql "postgres" @("-c", "CREATE DATABASE `"$BaseDeDatos`" ENCODING 'UTF8' TEMPLATE template0")
+if (-not ($existe -eq "1" -and $Actualizar)) {
+    Write-Host "Creando la base '$BaseDeDatos'..."
+    Invoke-Psql "postgres" @("-c", "CREATE DATABASE `"$BaseDeDatos`" ENCODING 'UTF8' TEMPLATE template0")
+}
 
-foreach ($script in "citas_salud.sql", "02_correlativo_ticket.sql", "03_datos_iniciales.sql") {
+foreach ($script in $scripts) {
     Write-Host "Ejecutando $script..."
     Invoke-Psql $BaseDeDatos @("-f", (Join-Path $PSScriptRoot $script))
 }

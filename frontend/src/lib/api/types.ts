@@ -44,6 +44,12 @@ export interface RecuperarPinRequest {
   correo: string
 }
 
+export interface RestablecerPinRequest {
+  correo: string
+  codigo: string
+  pinNuevo: string
+}
+
 export interface Especialidad {
   idEspecialidad: number
   nombre: string

@@ -2,7 +2,6 @@ package com.cis.citas_salud.service;
 
 import com.cis.citas_salud.api.ApiException;
 import com.cis.citas_salud.api.dto.AuthDto.LoginRequest;
-import com.cis.citas_salud.api.dto.AuthDto.RecuperarPinRequest;
 import com.cis.citas_salud.api.dto.AuthDto.RegistroRequest;
 import com.cis.citas_salud.api.dto.AuthDto.SesionResponse;
 import com.cis.citas_salud.api.dto.AuthDto.TipoCuenta;
@@ -23,8 +22,6 @@ import com.cis.citas_salud.repository.HistoriaClinicaRepository;
 import com.cis.citas_salud.repository.PacienteRepository;
 import com.cis.citas_salud.repository.RolRepository;
 import com.cis.citas_salud.repository.UsuarioRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,7 +37,6 @@ import java.util.Map;
 @Transactional
 public class AuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final int MAX_INTENTOS = 3;
     private static final Duration BLOQUEO = Duration.ofMinutes(5);
     private static final int MAX_DOCTORES_POR_CONSULTORIO = 2;
@@ -182,13 +178,6 @@ public class AuthService {
                 .filter(c -> ocupacion.getOrDefault(c.getIdConsultorio(), 0) < MAX_DOCTORES_POR_CONSULTORIO)
                 .min(Comparator.comparing((Consultorio c) -> ocupacion.getOrDefault(c.getIdConsultorio(), 0))
                         .thenComparing(Consultorio::getIdConsultorio));
-    }
-
-    public void recuperarPin(RecuperarPinRequest datos) {
-        // Se responde igual exista o no el correo, para no revelar qué correos están registrados.
-        usuarioRepository.findByCorreoIgnoreCase(datos.correo().trim()).ifPresent(usuario ->
-                log.info("Solicitud de recuperación de PIN para el usuario {} (el envío de correo aún no está configurado)",
-                        usuario.getIdUsuario()));
     }
 
     @Transactional(readOnly = true)

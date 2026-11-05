@@ -64,7 +64,7 @@ export function TicketCitaDialog({
           </DialogHeader>
 
           <div className="flex flex-col items-center gap-1 rounded-xl bg-secondary px-6 py-4">
-            <span className="text-[11px] font-semibold tracking-wider text-secondary-foreground uppercase">
+            <span className="text-xs font-semibold text-secondary-foreground">
               Ticket de atención
             </span>
             <span className="text-3xl font-bold tracking-tight text-primary">N.° {ticket.cita.numeroTicket}</span>
@@ -80,7 +80,7 @@ export function TicketCitaDialog({
           </div>
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Recibirás recordatorios por SMS, WhatsApp o correo 48 y 24 horas antes de tu cita.
+            El día anterior a tu cita recibirás un recordatorio en tus notificaciones y en tu correo.
           </p>
 
           <div className="flex flex-col gap-2">

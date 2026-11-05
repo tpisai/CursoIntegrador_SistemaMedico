@@ -107,16 +107,18 @@ export function SelectorHorarios({
           </p>
           <Button
             size="xl"
-            className="w-full"
+            className="hidden w-full md:inline-flex"
             disabled={!elegidoDisponible || reservando}
             onClick={() => elegidoDisponible && onConfirmar(elegidoDisponible)}
           >
             {reservando ? <Spinner data-icon="inline-start" /> : null}
             Confirmar cita
           </Button>
-          <Button variant="ghost" disabled={idHorario === null || reservando} onClick={() => onHorario(null)}>
-            Cancelar selección
-          </Button>
+          {idHorario !== null ? (
+            <Button variant="ghost" disabled={reservando} onClick={() => onHorario(null)}>
+              Cancelar selección
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>

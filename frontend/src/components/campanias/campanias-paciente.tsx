@@ -25,7 +25,7 @@ function TarjetaCampania({ campania, onInscribir }: { campania: Campania; onInsc
     <Card className="h-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-secondary-foreground uppercase">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-secondary-foreground">
             <MegaphoneIcon className="size-3.5" aria-hidden="true" />
             Campaña
           </span>

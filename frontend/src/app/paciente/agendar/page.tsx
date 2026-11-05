@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 
-import { HistorialCard } from "@/components/citas/historial-card"
-import { MisCitasCard } from "@/components/citas/mis-citas-card"
 import { ReservaCita } from "@/components/citas/reserva-cita"
 import { Encabezado } from "@/components/portal/encabezado"
 
@@ -17,10 +15,6 @@ export default function AgendarPage() {
         descripcion="Consulta la disponibilidad de citas en tiempo real por especialidad, doctor y horario."
       />
       <ReservaCita />
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
-        <MisCitasCard />
-        <HistorialCard />
-      </div>
     </>
   )
 }

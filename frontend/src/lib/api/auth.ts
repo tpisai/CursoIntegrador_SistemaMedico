@@ -1,5 +1,5 @@
 import { request } from "./http"
-import type { LoginRequest, RecuperarPinRequest, RegistroRequest, Sesion } from "./types"
+import type { LoginRequest, RecuperarPinRequest, RegistroRequest, RestablecerPinRequest, Sesion } from "./types"
 
 export function iniciarSesion(datos: LoginRequest) {
   return request<Sesion>("POST", "/auth/login", datos)
@@ -12,4 +12,8 @@ export function registrarCuenta(datos: RegistroRequest) {
 
 export function recuperarPin(datos: RecuperarPinRequest) {
   return request<void>("POST", "/auth/recuperar-pin", datos)
+}
+
+export function restablecerPin(datos: RestablecerPinRequest) {
+  return request<void>("POST", "/auth/restablecer-pin", datos)
 }

@@ -166,7 +166,7 @@ export function CrearHorariosCard() {
                   id="horario-fecha"
                   type="date"
                   min={hoy}
-                  className="h-10"
+                  className="h-11"
                   aria-invalid={!!errores.fecha}
                   value={datos.fecha}
                   onChange={(e) => actualizar({ fecha: e.target.value })}
@@ -189,7 +189,7 @@ export function CrearHorariosCard() {
                   id="horario-inicio"
                   type="time"
                   step={300}
-                  className="h-10"
+                  className="h-11"
                   aria-invalid={!!errores.horaInicio}
                   value={datos.horaInicio}
                   onChange={(e) => actualizar({ horaInicio: e.target.value })}
@@ -202,7 +202,7 @@ export function CrearHorariosCard() {
                   id="horario-fin"
                   type="time"
                   step={300}
-                  className="h-10"
+                  className="h-11"
                   aria-invalid={!!errores.horaFin}
                   value={datos.horaFin}
                   onChange={(e) => actualizar({ horaFin: e.target.value })}

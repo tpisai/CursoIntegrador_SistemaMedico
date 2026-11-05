@@ -51,7 +51,7 @@ export function NotificacionesMenu() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="relative flex size-10 items-center justify-center rounded-full outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/50"
+          className="relative flex size-10 items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <BellIcon className="size-5" aria-hidden="true" />
           {noLeidas > 0 ? (

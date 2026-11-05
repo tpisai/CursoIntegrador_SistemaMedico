@@ -36,6 +36,12 @@ public final class AuthDto {
             @NotBlank(message = "Ingresa tu correo.") @Email(message = "Ingresa un correo electrónico válido.") String correo) {
     }
 
+    public record RestablecerPinRequest(
+            @NotBlank(message = "Ingresa tu correo.") @Email(message = "Ingresa un correo electrónico válido.") String correo,
+            @NotBlank(message = "Ingresa el código.") @Pattern(regexp = "\\d{6}", message = "El código tiene 6 dígitos.") String codigo,
+            @NotBlank(message = "Ingresa tu nuevo PIN.") @Pattern(regexp = "\\d{6}", message = "El PIN debe tener 6 dígitos numéricos.") String pinNuevo) {
+    }
+
     public record UsuarioResponse(
             Integer idUsuario,
             String dni,

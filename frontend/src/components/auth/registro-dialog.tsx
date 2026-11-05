@@ -147,7 +147,7 @@ export function RegistroDialog({
                   id="reg-nombres"
                   autoComplete="given-name"
                   placeholder="Ej. Ana Lucía"
-                  className="h-10"
+                  className="h-11"
                   value={datos.nombres}
                   aria-invalid={!!errores.nombres}
                   onChange={(e) => actualizar("nombres", e.target.value)}
@@ -160,7 +160,7 @@ export function RegistroDialog({
                   id="reg-apellidos"
                   autoComplete="family-name"
                   placeholder="Ej. Quispe Rojas"
-                  className="h-10"
+                  className="h-11"
                   value={datos.apellidos}
                   aria-invalid={!!errores.apellidos}
                   onChange={(e) => actualizar("apellidos", e.target.value)}
@@ -176,7 +176,7 @@ export function RegistroDialog({
                 inputMode="numeric"
                 autoComplete="username"
                 placeholder="Ej. 74521863"
-                className="h-10"
+                className="h-11"
                 value={datos.dni}
                 aria-invalid={!!errores.dni}
                 onChange={(e) => actualizar("dni", soloDigitos(e.target.value, 8))}
@@ -191,7 +191,7 @@ export function RegistroDialog({
                 type="email"
                 autoComplete="email"
                 placeholder="ejemplo@correo.com"
-                className="h-10"
+                className="h-11"
                 value={datos.correo}
                 aria-invalid={!!errores.correo}
                 onChange={(e) => actualizar("correo", e.target.value)}
@@ -234,7 +234,7 @@ export function RegistroDialog({
                     id="reg-cmp"
                     inputMode="numeric"
                     placeholder="Ej. 045812"
-                    className="h-10"
+                    className="h-11"
                     value={datos.cmp}
                     aria-invalid={!!errores.cmp}
                     onChange={(e) => actualizar("cmp", soloDigitos(e.target.value, 6))}
@@ -253,7 +253,7 @@ export function RegistroDialog({
                   inputMode="numeric"
                   autoComplete="new-password"
                   placeholder="••••••"
-                  className="h-10"
+                  className="h-11"
                   value={datos.pin}
                   aria-invalid={!!errores.pin}
                   onChange={(e) => actualizar("pin", soloDigitos(e.target.value, 6))}
@@ -268,7 +268,7 @@ export function RegistroDialog({
                   inputMode="numeric"
                   autoComplete="new-password"
                   placeholder="••••••"
-                  className="h-10"
+                  className="h-11"
                   value={datos.confirmarPin}
                   aria-invalid={!!errores.confirmarPin}
                   onChange={(e) => actualizar("confirmarPin", soloDigitos(e.target.value, 6))}

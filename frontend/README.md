@@ -4,7 +4,9 @@ Frontend del sistema de citas médicas del **Centro de Salud Miguel Grau** (Chac
 Stack: **Next.js 16** (App Router) + **TypeScript** + **Tailwind CSS v4** + **shadcn/ui** (Radix) + **SWR** + **zod**.
 Todos los datos vienen de la API de Spring Boot (`citas_salud/`) y se guardan en PostgreSQL.
 
-Diseño basado en el prototipo de Figma "SaludGrau — Prototipo Sistema de Citas Médicas".
+Diseño basado en el prototipo de Figma "SaludGrau — Prototipo Sistema de Citas Médicas", con ajustes tomados de
+portales de clínicas privadas: barra superior blanca con "Agendar cita" siempre a mano, inicio organizado por
+tareas, controles más grandes y un teal un tono más oscuro para cumplir el contraste AA.
 
 ## Cómo correr el sistema completo
 
@@ -19,12 +21,18 @@ spring.datasource.password=TU_CONTRASEÑA_DE_POSTGRES
 **2. Base de datos.** Desde la carpeta raíz del proyecto:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1            # crea centro_salud y carga los datos
-powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Reiniciar # la borra y la vuelve a crear
+powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1             # crea centro_salud y carga los datos
+powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Actualizar # agrega lo nuevo sin borrar datos
+powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Reiniciar  # la borra y la vuelve a crear
 ```
 
 El script ejecuta en orden `sql/citas_salud.sql` (tablas del equipo), `sql/02_correlativo_ticket.sql`
-(secuencia del número de ticket) y `sql/03_datos_iniciales.sql` (catálogos y datos de prueba).
+(secuencia del número de ticket), `sql/03_datos_iniciales.sql` (catálogos y datos de prueba),
+`sql/04_recuperacion_pin.sql` (códigos para recuperar el PIN) y `sql/05_profesionales_cmi.sql`
+(profesionales del centro de salud). Con `-Actualizar` solo ejecuta los dos últimos, que se pueden repetir.
+
+Las fechas de los datos de prueba se calculan desde el día de la instalación. Si pasan semanas, las citas y
+campañas de ejemplo quedan en el pasado y los paneles se ven vacíos: `-Reiniciar` las renueva.
 
 **3. Backend** (puerto 8080). Desde `citas_salud/`, con `JAVA_HOME` apuntando al JDK 25:
 
@@ -58,13 +66,18 @@ Los otros doctores (`87654322` a `87654326`) usan el PIN `654321`, y los otros p
 Desde el login también se pueden crear cuentas nuevas de paciente o de doctor. Las cuentas de
 administración solo se crean en la base de datos.
 
+Los profesionales del cartel "Programación del día" del CMI Miguel Grau están en
+`sql/05_profesionales_cmi.sql`, con DNI del `87654327` al `87654342` y PIN `654321`. Sus nombres vienen del
+cartel; el DNI, el correo y la colegiatura son datos de prueba. El personal de emergencia no tiene
+consultorio, así que no aparece en la reserva en línea.
+
 ## Pantallas
 
 | Ruta                     | Pantalla del prototipo                               | Requerimientos       |
 | ------------------------ | ---------------------------------------------------- | -------------------- |
 | `/login`                 | 01 · Login, M1 · Registro, M2 · Recuperar PIN        | RF-01 a RF-04        |
 | `/paciente/agendar`      | 02 · Portal del Paciente, M3 · Cita confirmada       | RF-05 a RF-09, RF-11 |
-| `/paciente`              | Inicio: resumen de citas e historial                 | RF-07, RF-09         |
+| `/paciente`              | Inicio: próxima cita, accesos, citas e historial     | RF-07, RF-09         |
 | `/paciente/citas`        | Mis citas activas (ver ticket, cancelar)             | RF-07, RF-08         |
 | `/paciente/historial`    | Historial de atención y documentos                   | RF-09, RF-11         |
 | `/paciente/comunicacion` | 05 · Comunicación y Campañas: inscripción y comprobante | RF-19 a RF-21     |
@@ -105,6 +118,15 @@ que son al día siguiente (`RecordatorioService`). Corre al arrancar y luego cad
 - SMS/WhatsApp quedan para cuando se contrate un proveedor (Twilio, API de WhatsApp Business): bastaría con
   otro canal junto a `CorreoService`.
 
+### Recuperar el PIN (RF-03)
+
+En el login → **¿Olvidaste tu PIN?**, el usuario escribe su correo y recibe un código de 6 dígitos que vence a
+los 15 minutos (`RecuperacionPinService`). El código se guarda cifrado en `recuperacion_pin`, admite 5 intentos
+y solo se puede reenviar una vez por minuto. Al cambiar el PIN también se desbloquea la cuenta.
+
+Para que el correo salga de verdad hay que configurar SMTP (ver arriba). Sin SMTP el código queda en el log del
+backend, en la línea `Código de recuperación de PIN para ...`, para poder probar el flujo.
+
 ## Formularios de entrada de datos
 
 Cada formulario valida en el navegador y otra vez en la API, y guarda en PostgreSQL:
@@ -120,18 +142,17 @@ Cada formulario valida en el navegador y otra vez en la API, y guarda en Postgre
 Además están los formularios de la primera entrega: registro de cuenta (`usuario`, `paciente` o
 `doctor`), reservar cita (`cita`), solicitar cambio de fecha y derivar paciente (`solicitud`).
 
-Los datos iniciales (`sql/03_datos_iniciales.sql`) dejan al menos 5 registros en cada una de esas tablas:
+Los datos iniciales dejan al menos 5 registros en cada una de esas tablas:
 
 | Tabla                  | Registros | Tabla                  | Registros |
 | ---------------------- | --------- | ---------------------- | --------- |
-| `usuario`              | 12        | `atencion`             | 6         |
+| `usuario`              | 28        | `atencion`             | 6         |
 | `paciente`             | 5         | `documento_medico`     | 8         |
-| `doctor`               | 6         | `solicitud`            | 6         |
+| `doctor`               | 22        | `solicitud`            | 6         |
 | `cita`                 | 13        | `campania`             | 5         |
 | `horario`              | 15 (+ los que genera el backend) | `inscripcion_campania` | 7 |
 
-`instalar_bd.ps1` muestra este conteo al terminar. Para que una base ya instalada tenga estos datos,
-vuelve a instalarla con `-Reiniciar` (borra lo que se haya registrado a mano).
+`instalar_bd.ps1` muestra este conteo al terminar.
 
 ## Estructura
 
@@ -168,7 +189,8 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | ------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
 | `POST`  | `/auth/login`                                                       | `{ dni, pin }` → `{ token, usuario }`. 423 si la cuenta está bloqueada (3 intentos) |
 | `POST`  | `/auth/registro`                                                    | `{ tipoCuenta: PACIENTE\|DOCTOR, nombres, apellidos, dni, correo, pin, terminosAceptados, idEspecialidad?, cmp? }` |
-| `POST`  | `/auth/recuperar-pin`                                               | `{ correo }` → 204                                      |
+| `POST`  | `/auth/recuperar-pin`                                               | `{ correo }` → 204. Envía el código si el correo existe |
+| `POST`  | `/auth/restablecer-pin`                                             | `{ correo, codigo, pinNuevo }` → 204. 400 si el código no es válido o venció |
 | `GET`   | `/especialidades`                                                   | Especialidades activas                                  |
 | `GET`   | `/doctores?especialidad={id}`                                       | Doctores de la especialidad                             |
 | `GET`   | `/doctores/{id}/consultorios`                                       | Consultorios del doctor                                 |

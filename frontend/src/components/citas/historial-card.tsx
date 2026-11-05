@@ -83,7 +83,7 @@ export function HistorialCard() {
         )}
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          <h3 className="text-xs font-semibold text-muted-foreground">
             Documentos disponibles
           </h3>
           {documentos.isLoading ? (
@@ -104,7 +104,7 @@ export function HistorialCard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-primary"
+                    className="h-11 text-primary sm:h-7"
                     disabled={descargando === doc.idDocumento}
                     onClick={() => descargar(doc)}
                   >

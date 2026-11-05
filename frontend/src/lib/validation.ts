@@ -38,6 +38,17 @@ export const registroSchema = z
 
 export const recuperarPinSchema = z.object({ correo })
 
+export const restablecerPinSchema = z
+  .object({
+    codigo: z.string().regex(/^\d{6}$/, "El código tiene 6 dígitos."),
+    pinNuevo: pin,
+    confirmarPin: z.string(),
+  })
+  .refine((datos) => datos.pinNuevo === datos.confirmarPin, {
+    path: ["confirmarPin"],
+    message: "Los PIN no coinciden.",
+  })
+
 export type ErroresDeCampo<T> = Partial<Record<keyof T, string>>
 
 /** Primer mensaje de error por campo, listo para mostrar debajo de cada input. */

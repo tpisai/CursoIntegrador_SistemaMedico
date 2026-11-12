@@ -68,12 +68,14 @@ public class DoctorService {
     private final ObjectMapper objectMapper;
     private final Path carpetaArchivos;
     private final DetalleMedicamentoRepository detalleMedicamentoRepository;
+    private final OrdenExamenService ordenExamenService;
 
     public DoctorService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                          HorarioRepository horarioRepository, SolicitudRepository solicitudRepository,
                          UsuarioRepository usuarioRepository, AtencionRepository atencionRepository,
                          HistoriaClinicaRepository historiaRepository, DocumentoMedicoRepository documentoRepository,
                          DetalleMedicamentoRepository detalleMedicamentoRepository, NotificacionService notificacionService, ObjectMapper objectMapper,
+                         OrdenExamenService ordenExamenService,
                          @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
@@ -84,6 +86,7 @@ public class DoctorService {
         this.historiaRepository = historiaRepository;
         this.documentoRepository = documentoRepository;
         this.detalleMedicamentoRepository = detalleMedicamentoRepository;
+        this.ordenExamenService = ordenExamenService;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
         this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
@@ -199,6 +202,11 @@ public class DoctorService {
         atencion.setTratamiento(tratamiento);
         atencion.setObservaciones(textoOpcional(datos.observaciones()));
         atencionRepository.save(atencion);
+        if (datos.examenesRequeridos() != null && !datos.examenesRequeridos().isBlank()) {
+            ordenExamenService.crear(atencion, datos.examenesRequeridos(), datos.motivoClinico());
+        } else if (datos.motivoClinico() != null && !datos.motivoClinico().isBlank()) {
+            throw ApiException.datosInvalidos("Agrega los exámenes requeridos para emitir la orden.");
+        }
         // Registrar los medicamentos prescritos
         if (datos.medicamentos() != null && !datos.medicamentos().isEmpty()) {
             List<DetalleMedicamento> medicamentos = new java.util.ArrayList<>();

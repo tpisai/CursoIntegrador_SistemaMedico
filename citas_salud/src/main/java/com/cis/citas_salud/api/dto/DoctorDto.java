@@ -64,6 +64,8 @@ public final class DoctorDto {
             @Size(max = 2000, message = "El diagnóstico es demasiado largo.") String diagnostico,
             @Size(max = 2000, message = "El tratamiento es demasiado largo.") String tratamiento,
             @Size(max = 2000, message = "Las observaciones son demasiado largas.") String observaciones,
+            @Size(max = 4000, message = "La lista de exámenes es demasiado larga.") String examenesRequeridos,
+            @Size(max = 2000, message = "El motivo clínico es demasiado largo.") String motivoClinico,
             List<@Valid MedicamentoRequest> medicamentos) {
     }
 

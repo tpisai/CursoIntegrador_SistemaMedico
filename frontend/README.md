@@ -29,7 +29,8 @@ powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Reiniciar  # la bo
 El script ejecuta en orden `sql/citas_salud.sql` (tablas del equipo), `sql/02_correlativo_ticket.sql`
 (secuencia del número de ticket), `sql/03_datos_iniciales.sql` (catálogos y datos de prueba),
 `sql/04_recuperacion_pin.sql` (códigos para recuperar el PIN) y `sql/05_profesionales_cmi.sql`
-(profesionales del centro de salud). Con `-Actualizar` solo ejecuta los dos últimos, que se pueden repetir.
+(profesionales del centro de salud), además de `sql/06_orden_examen.sql` (tabla de órdenes). Con
+`-Actualizar` ejecuta las actualizaciones idempotentes sin borrar datos.
 
 Los scripts numerados desde el 06 se detectan solos: basta con dejar el archivo en `sql/`. Hoy son
 `sql/07_receta_medicamentos.sql` (medicamentos de la receta) y `sql/08_consulta_medica.sql` (tipo de
@@ -95,6 +96,11 @@ consultorio, así que no aparece en la reserva en línea.
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
 | `/admin/reportes`        | Reportes de control de citas y ausentismo            | EDT 4.8              |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
+
+Al registrar una atención, el doctor puede solicitar exámenes de forma opcional: escribe un examen
+por línea e indica el motivo clínico. Se guarda la orden y se genera un PDF Jasper con el paciente,
+los exámenes, el motivo, el médico solicitante y la fecha. El doctor puede descargarla al cerrar la
+atención y el paciente desde `/paciente/historial`.
 
 ### Recepción: validación de tickets (RF-12)
 
@@ -162,6 +168,7 @@ Cada formulario valida en el navegador y otra vez en la API, y guarda en Postgre
 | Nueva campaña médica                    | Administración | `/admin/comunicacion` → Nueva campaña     | `campania` (+ aviso a cada paciente en `notificacion`) |
 | Inscribirse a una campaña               | Paciente       | `/paciente/comunicacion` → Inscribirme a la campaña | `inscripcion_campania` (descuenta un cupo) |
 | Registrar atención médica               | Doctor         | `/doctor` → Atender                       | `atencion`, `documento_medico` (archivo opcional) |
+| Emitir orden de exámenes                 | Doctor         | `/doctor` → Atender                       | `orden_examen` (PDF disponible para doctor y paciente) |
 | Aprobar o rechazar solicitudes          | Administración | `/admin` → Solicitudes de cambio de fecha / de derivación | `solicitud` (+ mueve la `cita` si se aprueba un cambio de fecha) |
 
 Además están los formularios de la primera entrega: registro de cuenta (`usuario`, `paciente` o
@@ -239,6 +246,7 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `PATCH` | `/citas/{id}/confirmar`                                             | El paciente confirma su asistencia: RESERVADA pasa a CONFIRMADA. 409 si ya no se puede |
 | `GET`   | `/citas/{id}/ticket`                                                | PDF del ticket                                          |
 | `GET`   | `/pacientes/me/historial`                                           | Atenciones (asistió / no asistió)                       |
+| `GET`   | `/pacientes/me/citas/{id}/orden-examenes`                           | PDF de la orden de exámenes de una cita propia           |
 | `GET`   | `/pacientes/me/documentos`                                          | Documentos médicos                                      |
 | `GET`   | `/documentos/{id}/descarga`                                         | Archivo del documento                                   |
 | `GET`   | `/doctor/citas?fecha=YYYY-MM-DD`                                    | Citas asignadas del día (por defecto hoy)               |
@@ -252,9 +260,10 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, idHorarioNuevo, motivo }`                    |
 | `POST`  | `/doctor/solicitudes/derivacion`                                    | `{ idCita, establecimiento, especialidad, motivo }`     |
 | `GET`   | `/doctor/solicitudes`                                               | Solicitudes enviadas por el doctor                      |
-| `POST`  | `/doctor/citas/{id}/atencion`                                       | `{ asistio, anamnesis?, examenFisico?, diagnostico, tratamiento, observaciones? }`. Con `asistio: false` solo marca la inasistencia |
+| `POST`  | `/doctor/citas/{id}/atencion`                                       | `{ asistio, anamnesis?, examenFisico?, diagnostico, tratamiento, observaciones?, examenesRequeridos?, motivoClinico? }`. Los dos últimos campos emiten opcionalmente una orden |
 | `GET`   | `/doctor/tipos-documento`                                           | Tipos de documento médico                               |
 | `POST`  | `/doctor/atenciones/{id}/documentos`                                | Multipart `tipoDocumento` + `archivo` (PDF, JPG o PNG, hasta 5 MB) |
+| `GET`   | `/doctor/atenciones/{id}/orden-examenes`                            | PDF de la orden emitida por el doctor autenticado          |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
 | `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |

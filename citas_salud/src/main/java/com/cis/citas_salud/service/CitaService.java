@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.List;
 
 /** Citas del paciente: reserva (RF-06), ticket (RF-08), historial (RF-09) y documentos (RF-11). */
@@ -36,10 +37,13 @@ public class CitaService {
     private final Path carpetaArchivos;
     private final AtencionRepository atencionRepository;
     private final RecetaMedicaService recetaMedicaService;
+    private final OrdenExamenRepository ordenExamenRepository;
+    private final OrdenExamenService ordenExamenService;
 
     public CitaService(CitaRepository citaRepository, HorarioRepository horarioRepository,
                        PacienteRepository pacienteRepository, DocumentoMedicoRepository documentoRepository,
                        NotificacionService notificacionService, AtencionRepository atencionRepository, RecetaMedicaService recetaMedicaService,
+                       OrdenExamenRepository ordenExamenRepository, OrdenExamenService ordenExamenService,
                        @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.citaRepository = citaRepository;
         this.horarioRepository = horarioRepository;
@@ -48,6 +52,8 @@ public class CitaService {
         this.notificacionService = notificacionService;
         this.atencionRepository = atencionRepository;
         this.recetaMedicaService = recetaMedicaService;
+        this.ordenExamenRepository = ordenExamenRepository;
+        this.ordenExamenService = ordenExamenService;
         this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
     }
 
@@ -144,13 +150,19 @@ public class CitaService {
 
     @Transactional(readOnly = true)
     public List<AtencionHistorialResponse> historial(UsuarioSesion sesion) {
-        return citaRepository.historialDelPaciente(paciente(sesion).getIdPaciente(), Cita.CERRADAS).stream()
+        List<Cita> citas = citaRepository.historialDelPaciente(paciente(sesion).getIdPaciente(), Cita.CERRADAS);
+        Set<Integer> citasConOrden = citas.isEmpty()
+                ? Set.of()
+                : Set.copyOf(ordenExamenRepository.findCitasConOrden(
+                        citas.stream().map(Cita::getIdCita).toList()));
+        return citas.stream()
                 .map(c -> new AtencionHistorialResponse(
                         c.getIdCita(),
                         Formato.fecha(c.getHorario().getFecha()),
                         c.getHorario().getDoctor().getEspecialidad().getNombre(),
                         c.getHorario().getDoctor().getUsuario().getNombreCorto(),
-                        c.getEstado()))
+                        c.getEstado(),
+                        citasConOrden.contains(c.getIdCita())))
                 .toList();
     }
 
@@ -208,6 +220,12 @@ public class CitaService {
         // Generar el PDF utilizando el mismo reporte JasperReports.
         byte[] pdf = recetaMedicaService.generarRecetaPaciente(atencion);
         return new Archivo("receta-" + idCita + ".pdf", "application/pdf", pdf);
+    }
+
+    @Transactional(readOnly = true)
+    public Archivo ordenExamen(UsuarioSesion sesion, Integer idCita) {
+        citaDelPaciente(sesion, idCita);
+        return ordenExamenService.generarPdfPaciente(sesion, idCita);
     }
     private static String valorOGuion(String valor) {
         return valor == null || valor.isBlank() ? "-" : valor;

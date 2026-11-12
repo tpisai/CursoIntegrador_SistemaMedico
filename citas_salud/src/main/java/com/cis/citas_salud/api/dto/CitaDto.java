@@ -41,7 +41,9 @@ public final class CitaDto {
             String consultorio) {
     }
 
-    public record AtencionHistorialResponse(Integer idCita, String fecha, String especialidad, String doctor, String estado) {
+    public record AtencionHistorialResponse(
+            Integer idCita, String fecha, String especialidad, String doctor, String estado,
+            boolean tieneOrdenExamen) {
     }
 
     public record DocumentoResponse(Integer idDocumento, String tipoDocumento, String nombreArchivo, String fechaCarga) {

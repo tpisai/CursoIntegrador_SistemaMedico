@@ -537,6 +537,23 @@ CREATE TABLE atencion (
         )
 );
 
+-- ============================================================
+-- ORDEN_EXAMEN
+-- Solicitudes de análisis y pruebas médicas emitidas durante la atención.
+-- ============================================================
+
+CREATE TABLE orden_examen (
+    id_orden_examen SERIAL PRIMARY KEY,
+    id_atencion INTEGER NOT NULL UNIQUE,
+    examenes_requeridos TEXT NOT NULL,
+    motivo_clinico TEXT NOT NULL,
+    fecha_emision TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orden_examen_atencion
+        FOREIGN KEY (id_atencion)
+        REFERENCES atencion(id_atencion)
+        ON DELETE CASCADE
+);
+
 
 -- ============================================================
 -- 17. DOCUMENTO_MEDICO

@@ -38,3 +38,7 @@ export function subirDocumento(idAtencion: number, tipoDocumento: string, archiv
 export function descargarReceta(idAtencion: number) {
   return requestArchivo(`/doctor/atenciones/${idAtencion}/receta`)
 }
+
+export function descargarOrdenExamen(idAtencion: number) {
+  return requestArchivo(`/doctor/atenciones/${idAtencion}/orden-examenes`)
+}

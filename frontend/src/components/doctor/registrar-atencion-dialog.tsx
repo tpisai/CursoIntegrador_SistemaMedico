@@ -15,8 +15,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { CampoSelect } from "@/components/portal/campo-select"
 import { useTiposDocumento } from "@/hooks/use-doctor"
-import { registrarAtencion, subirDocumento, descargarReceta } from "@/lib/api/doctor"
+import {
+  registrarAtencion,
+  subirDocumento,
+  descargarOrdenExamen,
+  descargarReceta,
+} from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
+import { guardarArchivo } from "@/lib/descargar"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import type { CitaAsignada } from "@/lib/api/types"
 import type { MedicamentoRequest } from "@/lib/api/types"
@@ -32,6 +38,8 @@ type Datos = {
   diagnostico: string
   tratamiento: string
   observaciones: string
+  examenesRequeridos: string
+  motivoClinico: string
   tipoDocumento: string
   archivo: File | null
 }
@@ -43,6 +51,8 @@ const VACIO: Datos = {
   diagnostico: "",
   tratamiento: "",
   observaciones: "",
+  examenesRequeridos: "",
+  motivoClinico: "",
   tipoDocumento: "",
   archivo: null,
 }
@@ -54,6 +64,12 @@ function validar(d: Datos): Errores {
   if (d.asistio === "NO") return errores
   if (d.diagnostico.trim().length < 3) errores.diagnostico = "Escribe el diagnóstico."
   if (d.tratamiento.trim().length < 3) errores.tratamiento = "Escribe el tratamiento indicado."
+  if (d.examenesRequeridos.trim() && d.motivoClinico.trim().length < 3) {
+    errores.motivoClinico = "Indica el motivo clínico de los exámenes."
+  }
+  if (!d.examenesRequeridos.trim() && d.motivoClinico.trim()) {
+    errores.examenesRequeridos = "Agrega al menos un examen o borra el motivo clínico."
+  }
   if (d.archivo) {
     if (!d.tipoDocumento) errores.tipoDocumento = "Elige qué tipo de documento adjuntas."
     if (!TIPOS_ARCHIVO.includes(d.archivo.type)) errores.archivo = "Solo PDF, JPG o PNG."
@@ -82,6 +98,7 @@ export function RegistrarAtencionDialog({
   const [claveArchivo, setClaveArchivo] = useState(0)
   const [idAtencionRegistrada, setIdAtencionRegistrada] = useState<number | null>(null)
   const [descargandoReceta, setDescargandoReceta] = useState(false)
+  const [descargandoOrden, setDescargandoOrden] = useState(false)
   const [guardando, startTransition] = useTransition()
   const asistio = datos.asistio === "SI"
 
@@ -123,6 +140,22 @@ export function RegistrarAtencionDialog({
       toast.error(mensajeDeError(error))
     } finally {
       setDescargandoReceta(false)
+    }
+  }
+
+  async function onDescargarOrden() {
+    if (!idAtencionRegistrada) return
+    setDescargandoOrden(true)
+    try {
+      guardarArchivo(
+        await descargarOrdenExamen(idAtencionRegistrada),
+        `orden-examenes-${idAtencionRegistrada}.pdf`
+      )
+      toast.success("Orden de exámenes descargada correctamente.")
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoOrden(false)
     }
   }
 
@@ -178,6 +211,8 @@ export function RegistrarAtencionDialog({
                 diagnostico: datos.diagnostico,
                 tratamiento: datos.tratamiento,
                 observaciones: datos.observaciones,
+                examenesRequeridos: datos.examenesRequeridos,
+                motivoClinico: datos.motivoClinico,
                 medicamentos: medicamentos.map((medicamento, indice) => ({ ...medicamento, orden: indice + 1 })),
               }
             : { asistio: false }
@@ -229,6 +264,9 @@ export function RegistrarAtencionDialog({
               <AlertDescription>
                 La atención se registró correctamente en la historia clínica.
                 Ya puedes descargar la receta médica en formato PDF.
+                {datos.examenesRequeridos.trim()
+                  ? " La orden de exámenes también quedó guardada y está disponible para el paciente."
+                  : ""}
               </AlertDescription>
             </Alert>
           ) : (
@@ -381,6 +419,35 @@ export function RegistrarAtencionDialog({
                       </Button>
                     </div>
                   </FieldSet>
+                  <FieldSet>
+                    <FieldLegend variant="label">Orden de exámenes (opcional)</FieldLegend>
+                    <FieldDescription>
+                      Escribe un examen por línea. Si agregas exámenes, indica el motivo clínico.
+                    </FieldDescription>
+                    <Field data-invalid={!!errores.examenesRequeridos}>
+                      <FieldLabel htmlFor="atencion-examenes-requeridos">Exámenes requeridos</FieldLabel>
+                      <Textarea
+                        id="atencion-examenes-requeridos"
+                        placeholder={"Ej. Hemograma completo\nGlucosa en ayunas"}
+                        maxLength={4000}
+                        value={datos.examenesRequeridos}
+                        onChange={(e) => actualizar("examenesRequeridos", e.target.value)}
+                      />
+                      <FieldError>{errores.examenesRequeridos}</FieldError>
+                    </Field>
+                    <Field data-invalid={!!errores.motivoClinico}>
+                      <FieldLabel htmlFor="atencion-motivo-clinico">Motivo clínico</FieldLabel>
+                      <Textarea
+                        id="atencion-motivo-clinico"
+                        placeholder="Describe brevemente el motivo de la solicitud."
+                        maxLength={2000}
+                        aria-invalid={!!errores.motivoClinico}
+                        value={datos.motivoClinico}
+                        onChange={(e) => actualizar("motivoClinico", e.target.value)}
+                      />
+                      <FieldError>{errores.motivoClinico}</FieldError>
+                    </Field>
+                  </FieldSet>
                   <Field>
                     <FieldLabel htmlFor="atencion-observaciones">Observaciones</FieldLabel>
                     <Textarea id="atencion-observaciones" placeholder="Ej. Control en una semana."
@@ -443,6 +510,18 @@ export function RegistrarAtencionDialog({
                   )}
                   {descargandoReceta ? "Descargando..." : "Descargar receta PDF"}
                 </Button>
+                {datos.examenesRequeridos.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={onDescargarOrden}
+                    disabled={descargandoOrden}
+                  >
+                    {descargandoOrden ? <Spinner data-icon="inline-start" /> : <FileDownIcon data-icon="inline-start" />}
+                    {descargandoOrden ? "Descargando..." : "Descargar orden PDF"}
+                  </Button>
+                ) : null}
               </>
             ) : (
               <>

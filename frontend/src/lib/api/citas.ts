@@ -38,3 +38,11 @@ export function descargarDocumento(idDocumento: number) {
 export function descargarReceta(idCita: number) {
   return requestArchivo(`/pacientes/me/citas/${idCita}/receta`)
 }
+
+export function descargarOrdenExamen(idCita: number) {
+  return requestArchivo(`/pacientes/me/citas/${idCita}/orden-examenes`)
+}
+
+export function descargarHistorialClinico() {
+  return requestArchivo("/pacientes/me/historial/pdf")
+}

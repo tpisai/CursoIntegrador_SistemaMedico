@@ -1,16 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { ClipboardListIcon, PencilIcon } from "lucide-react"
+import { ClipboardListIcon, DownloadIcon, PencilIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Spinner } from "@/components/ui/spinner"
 import { AntecedentesDialog } from "@/components/consulta/antecedentes-dialog"
 import { DetalleAtencion } from "@/components/consulta/detalle-atencion"
+import { descargarFichasDelPaciente } from "@/lib/api/consulta"
+import { mensajeDeError } from "@/lib/api/http"
 import type { AtencionPrevia, PacienteConsulta } from "@/lib/api/types"
+import { guardarArchivo } from "@/lib/descargar"
 import { formatFecha } from "@/lib/format"
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
@@ -31,15 +36,30 @@ export function HistoriaClinica({
   idCita,
   paciente,
   previas,
+  conAtenciones,
   onCambio,
 }: {
   idCita: number
   paciente: PacienteConsulta
   // Atenciones anteriores a la cita que se está viendo, de la más reciente a la más antigua.
   previas: AtencionPrevia[]
+  // El paciente tiene al menos una atención registrada (contando la de esta cita).
+  conAtenciones: boolean
   onCambio: () => Promise<unknown>
 }) {
   const [editando, setEditando] = useState(false)
+  const [descargando, setDescargando] = useState(false)
+
+  async function descargarFichas() {
+    setDescargando(true)
+    try {
+      guardarArchivo(await descargarFichasDelPaciente(idCita), `fichas-consulta-${paciente.dni}.pdf`)
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargando(false)
+    }
+  }
   const documentos = previas.reduce((total, atencion) => total + atencion.documentos.length, 0)
   const emergencia = [paciente.contactoEmergencia, paciente.telefonoEmergencia].filter(Boolean).join(" · ")
 
@@ -77,6 +97,14 @@ export function HistoriaClinica({
               ? `${plural(previas.length, "atención", "atenciones")} y ${plural(documentos, "documento", "documentos")} en todo el centro de salud.`
               : "Aún no tiene atenciones registradas."}
           </CardDescription>
+          {conAtenciones ? (
+            <CardAction>
+              <Button variant="outline" className="h-11 sm:h-8" disabled={descargando} onClick={descargarFichas}>
+                {descargando ? <Spinner data-icon="inline-start" /> : <DownloadIcon data-icon="inline-start" />}
+                Fichas en PDF
+              </Button>
+            </CardAction>
+          ) : null}
         </CardHeader>
         <CardContent>
           {previas.length ? (

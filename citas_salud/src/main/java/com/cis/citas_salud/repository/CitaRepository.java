@@ -60,6 +60,14 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     @Query(CON_DETALLE + " where c.estado in :estados and h.fecha = :fecha order by h.horaInicio")
     List<Cita> delDia(@Param("estados") Collection<String> estados, @Param("fecha") LocalDate fecha);
 
+    /** El doctor tiene o tuvo una cita con el paciente: eso le da acceso a su historia clínica. */
+    @Query("""
+            select count(c) > 0 from Cita c
+            where c.horario.doctor.idDoctor = :doctor and c.paciente.idPaciente = :paciente
+              and c.estado <> 'CANCELADA'
+            """)
+    boolean doctorAtiendeA(@Param("doctor") Integer idDoctor, @Param("paciente") Integer idPaciente);
+
     /** [especialidad, nombres, apellidos, estado, citas] del reporte de control. */
     @Query("""
             select e.nombre, u.nombres, u.apellidos, c.estado, count(c) from Cita c

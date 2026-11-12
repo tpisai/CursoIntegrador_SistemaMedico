@@ -34,4 +34,13 @@ public class HistoriaClinica {
 
     @Column(name = "observaciones", columnDefinition = "text")
     private String observaciones;
+
+    @Column(name = "alergias", columnDefinition = "text")
+    private String alergias;
+
+    @Column(name = "antecedentes", columnDefinition = "text")
+    private String antecedentes;
+
+    @Column(name = "medicacion_habitual", columnDefinition = "text")
+    private String medicacionHabitual;
 }

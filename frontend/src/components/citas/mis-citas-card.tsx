@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EstadoCitaBadge } from "@/components/citas/estado-cita-badge"
 import { type EstadoTicket, TicketCitaDialog } from "@/components/citas/ticket-cita-dialog"
 import { useMisCitas } from "@/hooks/use-citas"
-import { cancelarCita } from "@/lib/api/citas"
+import { cancelarCita, confirmarAsistencia } from "@/lib/api/citas"
 import { mensajeDeError } from "@/lib/api/http"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import type { Cita } from "@/lib/api/types"
@@ -56,6 +56,14 @@ export function MisCitasCard({
     toast.promise(promesa, {
       loading: "Cancelando tu cita…",
       success: `Cancelaste tu cita del ${formatDiaCorto(cita.fecha)}. El cupo quedó libre.`,
+      error: mensajeDeError,
+    })
+  }
+
+  function confirmar(cita: Cita) {
+    toast.promise(confirmarAsistencia(cita.idCita).then(() => recargar()), {
+      loading: "Confirmando tu asistencia…",
+      success: `Confirmaste tu cita del ${formatDiaCorto(cita.fecha)}.`,
       error: mensajeDeError,
     })
   }
@@ -123,6 +131,12 @@ export function MisCitasCard({
                         </div>
                         <EstadoCitaBadge estado={cita.estado} />
                       </div>
+                      {cita.estado === "RESERVADA" ? (
+                        <Button className="h-11" onClick={() => confirmar(cita)}>
+                          Confirmar asistencia
+                          <span className="sr-only"> a la cita del {formatDiaCorto(cita.fecha)}</span>
+                        </Button>
+                      ) : null}
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
@@ -146,45 +160,53 @@ export function MisCitasCard({
             <div className="hidden md:block">
               <Table>
                 <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha / hora</TableHead>
-                  <TableHead>Especialidad</TableHead>
-                  <TableHead>Doctor</TableHead>
-                  <TableHead>Ticket</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Acciones</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {citas.map((cita) => (
-                  <TableRow key={cita.idCita}>
-                    <TableCell className="font-medium">{formatDiaHora(cita.fecha, cita.horaInicio)}</TableCell>
-                    <TableCell>{cita.especialidad}</TableCell>
-                    <TableCell>{cita.doctor}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 font-semibold"
-                        onClick={() => setTicket({ cita, recienReservada: false, abierto: true })}
-                      >
-                        {cita.numeroTicket}
-                        <span className="sr-only">: ver ticket</span>
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <EstadoCitaBadge estado={cita.estado} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="destructive" size="sm" onClick={() => setPorCancelar(cita)}>
-                        Cancelar
-                        <span className="sr-only"> cita del {formatDiaCorto(cita.fecha)}</span>
-                      </Button>
-                    </TableCell>
+                  <TableRow>
+                    <TableHead>Fecha / hora</TableHead>
+                    <TableHead>Especialidad</TableHead>
+                    <TableHead>Doctor</TableHead>
+                    <TableHead>Ticket</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>
+                      <span className="sr-only">Acciones</span>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
+                </TableHeader>
+                <TableBody>
+                  {citas.map((cita) => (
+                    <TableRow key={cita.idCita}>
+                      <TableCell className="font-medium">{formatDiaHora(cita.fecha, cita.horaInicio)}</TableCell>
+                      <TableCell>{cita.especialidad}</TableCell>
+                      <TableCell>{cita.doctor}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 font-semibold"
+                          onClick={() => setTicket({ cita, recienReservada: false, abierto: true })}
+                        >
+                          {cita.numeroTicket}
+                          <span className="sr-only">: ver ticket</span>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <EstadoCitaBadge estado={cita.estado} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          {cita.estado === "RESERVADA" ? (
+                            <Button size="sm" onClick={() => confirmar(cita)}>
+                              Confirmar asistencia
+                              <span className="sr-only"> a la cita del {formatDiaCorto(cita.fecha)}</span>
+                            </Button>
+                          ) : null}
+                          <Button variant="destructive" size="sm" onClick={() => setPorCancelar(cita)}>
+                            Cancelar
+                            <span className="sr-only"> cita del {formatDiaCorto(cita.fecha)}</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </div>
 

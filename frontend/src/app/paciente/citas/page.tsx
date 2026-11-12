@@ -12,7 +12,7 @@ export default function MisCitasPage() {
     <>
       <Encabezado
         titulo="Mis citas"
-        descripcion="Revisa tus citas activas, muestra tu ticket en recepción o cancela si no podrás asistir."
+        descripcion="Confirma tu asistencia, muestra tu ticket en recepción o cancela si no podrás ir."
       />
       <MisCitasCard mostrarAgendar />
     </>

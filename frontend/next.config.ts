@@ -5,6 +5,8 @@ import type { NextConfig } from "next"
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8080"
 
 const nextConfig: NextConfig = {
+  // Imagen de Docker: genera .next/standalone con un server.js autocontenido.
+  output: "standalone",
   // El botón flotante de desarrollo tapa la barra de confirmación de la reserva en móvil.
   devIndicators: false,
   rewrites() {

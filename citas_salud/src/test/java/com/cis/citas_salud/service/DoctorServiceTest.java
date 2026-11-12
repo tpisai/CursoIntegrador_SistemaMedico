@@ -5,11 +5,13 @@ import com.cis.citas_salud.api.dto.CitaDto.DocumentoResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.AtencionResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.CambioFechaRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.DerivacionRequest;
+import com.cis.citas_salud.api.dto.DoctorDto.MedicamentoRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.RegistrarAtencionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.SolicitudResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
+import com.cis.citas_salud.entity.DetalleMedicamento;
 import com.cis.citas_salud.entity.Doctor;
 import com.cis.citas_salud.entity.DocumentoMedico;
 import com.cis.citas_salud.entity.HistoriaClinica;
@@ -20,6 +22,7 @@ import com.cis.citas_salud.entity.Solicitud;
 import com.cis.citas_salud.entity.Usuario;
 import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CitaRepository;
+import com.cis.citas_salud.repository.DetalleMedicamentoRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HistoriaClinicaRepository;
@@ -33,6 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -89,7 +93,11 @@ class DoctorServiceTest {
     @Mock
     private DocumentoMedicoRepository documentoRepository;
     @Mock
+    private DetalleMedicamentoRepository detalleMedicamentoRepository;
+    @Mock
     private NotificacionService notificacionService;
+    @Captor
+    private ArgumentCaptor<List<DetalleMedicamento>> medicamentosGuardados;
 
     @TempDir
     private Path carpetaArchivos;
@@ -103,8 +111,9 @@ class DoctorServiceTest {
     @BeforeEach
     void preparar() {
         servicio = new DoctorService(doctorRepository, citaRepository, horarioRepository, solicitudRepository,
-                usuarioRepository, atencionRepository, historiaRepository, documentoRepository, notificacionService,
-                JsonMapper.builder().build(), carpetaArchivos.toString());
+                usuarioRepository, atencionRepository, historiaRepository, documentoRepository,
+                detalleMedicamentoRepository, notificacionService, JsonMapper.builder().build(),
+                carpetaArchivos.toString());
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         historia = new HistoriaClinica();
@@ -132,11 +141,17 @@ class DoctorServiceTest {
     }
 
     private static RegistrarAtencionRequest atendido(String diagnostico, String tratamiento) {
-        return new RegistrarAtencionRequest(true, " Dolor de garganta ", "  ", diagnostico, tratamiento, null);
+        return atendidoConReceta(diagnostico, tratamiento, null);
+    }
+
+    private static RegistrarAtencionRequest atendidoConReceta(String diagnostico, String tratamiento,
+                                                              List<MedicamentoRequest> medicamentos) {
+        return new RegistrarAtencionRequest(true, " Dolor de garganta ", "  ", diagnostico, tratamiento, null,
+                medicamentos);
     }
 
     private static RegistrarAtencionRequest noAsistio() {
-        return new RegistrarAtencionRequest(false, null, null, null, null, null);
+        return new RegistrarAtencionRequest(false, null, null, null, null, null, null);
     }
 
     // ----- Registrar la atención -----
@@ -172,6 +187,32 @@ class DoctorServiceTest {
         assertNull(atencion.getExamenFisico());
         verify(notificacionService).crear(eq(paciente.getUsuario()), eq(Notificacion.CITA),
                 eq("Atención registrada"), anyString());
+        verifyNoInteractions(detalleMedicamentoRepository);
+    }
+
+    @Test
+    void registrarAtencionGuardaLosMedicamentosDeLaReceta() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+        when(historiaRepository.findByPaciente_IdPaciente(1)).thenReturn(Optional.of(historia));
+        List<MedicamentoRequest> receta = List.of(
+                new MedicamentoRequest(" Amoxicilina 500 mg ", "1 cápsula", "21", "Oral", "Cápsulas", "1",
+                        "Cada 8 horas", "7 días", null),
+                new MedicamentoRequest("Paracetamol 500 mg", "  ", null, null, null, null, "Si hay fiebre", null, 5));
+
+        servicio.registrarAtencion(sesion, ID_CITA, atendidoConReceta("Faringitis", "Antibiótico", receta));
+
+        verify(detalleMedicamentoRepository).saveAll(medicamentosGuardados.capture());
+        List<DetalleMedicamento> guardados = medicamentosGuardados.getValue();
+        assertEquals(2, guardados.size());
+        assertEquals("Amoxicilina 500 mg", guardados.get(0).getNombreMedicamento());
+        assertEquals("Cada 8 horas", guardados.get(0).getFrecuencia());
+        assertEquals(1, guardados.get(0).getOrden());
+        // Un campo en blanco se guarda vacío y el orden indicado se respeta.
+        assertNull(guardados.get(1).getDosis());
+        assertEquals(5, guardados.get(1).getOrden());
+        assertEquals("Faringitis", guardados.get(1).getAtencion().getDiagnostico());
     }
 
     @Test

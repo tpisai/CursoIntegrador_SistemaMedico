@@ -4,12 +4,14 @@ import com.cis.citas_salud.api.ApiException;
 import com.cis.citas_salud.api.dto.CitaDto.CitaResponse;
 import com.cis.citas_salud.api.dto.CitaDto.ReservarCitaRequest;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Doctor;
 import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.entity.Notificacion;
 import com.cis.citas_salud.entity.Paciente;
 import com.cis.citas_salud.entity.Usuario;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HorarioRepository;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static com.cis.citas_salud.service.DatosPrueba.exigeError;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -58,6 +61,10 @@ class CitaServiceTest {
     private DocumentoMedicoRepository documentoRepository;
     @Mock
     private NotificacionService notificacionService;
+    @Mock
+    private AtencionRepository atencionRepository;
+    @Mock
+    private RecetaMedicaService recetaMedicaService;
 
     private CitaService servicio;
     private final UsuarioSesion sesion = new UsuarioSesion(10, UsuarioSesion.PACIENTE);
@@ -67,7 +74,7 @@ class CitaServiceTest {
     @BeforeEach
     void preparar() {
         servicio = new CitaService(citaRepository, horarioRepository, pacienteRepository, documentoRepository,
-                notificacionService, "archivos");
+                notificacionService, atencionRepository, recetaMedicaService, "archivos");
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
     }
@@ -283,6 +290,46 @@ class CitaServiceTest {
         citaDe(DatosPrueba.paciente(2, otraCuenta), EN_TRES_DIAS, Cita.CONFIRMADA);
 
         exigeError(HttpStatus.NOT_FOUND, () -> servicio.ticket(sesion, 33));
+    }
+
+    // ----- Receta médica -----
+
+    @Test
+    void recetaDeUnaCitaAtendidaDevuelveElPdf() {
+        existeElPaciente();
+        citaDe(paciente, AYER, Cita.ATENDIDA);
+        Atencion atencion = new Atencion();
+        byte[] pdf = {37, 80, 68, 70};
+        when(atencionRepository.findByCita_IdCita(33)).thenReturn(Optional.of(atencion));
+        when(recetaMedicaService.generarRecetaPaciente(atencion)).thenReturn(pdf);
+
+        CitaService.Archivo archivo = servicio.receta(sesion, 33);
+
+        assertEquals("receta-33.pdf", archivo.nombre());
+        assertEquals("application/pdf", archivo.tipoMime());
+        assertArrayEquals(pdf, archivo.contenido());
+    }
+
+    @Test
+    void recetaDeUnaCitaSinAtencionResponde404() {
+        existeElPaciente();
+        citaDe(paciente, EN_TRES_DIAS, Cita.CONFIRMADA);
+        when(atencionRepository.findByCita_IdCita(33)).thenReturn(Optional.empty());
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.receta(sesion, 33));
+
+        verifyNoInteractions(recetaMedicaService);
+    }
+
+    @Test
+    void recetaDeUnaCitaAjenaResponde404() {
+        existeElPaciente();
+        Usuario otraCuenta = DatosPrueba.usuario(99, UsuarioSesion.PACIENTE, "99999999");
+        citaDe(DatosPrueba.paciente(2, otraCuenta), AYER, Cita.ATENDIDA);
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.receta(sesion, 33));
+
+        verifyNoInteractions(atencionRepository, recetaMedicaService);
     }
 
     // ----- Confirmar asistencia (EDT 4.12) -----

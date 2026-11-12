@@ -2512,7 +2512,8 @@
                   "const json = pm.response.json();",
                   "pm.test(\"Trae las atenciones de los datos iniciales\", () => {",
                   "  pm.expect(json).to.be.an('array').and.not.empty;",
-                  "  pm.expect(json[0]).to.have.all.keys('idCita', 'fecha', 'especialidad', 'doctor', 'estado');",
+                  "  pm.expect(json[0]).to.have.all.keys('idCita', 'fecha', 'especialidad', 'doctor', 'estado', 'tieneOrdenExamen');",
+                  "  pm.expect(json[0].tieneOrdenExamen).to.be.a('boolean');",
                   "  pm.expect(['ATENDIDA', 'NO_ASISTIO']).to.include(json[0].estado);",
                   "});"
                 ]

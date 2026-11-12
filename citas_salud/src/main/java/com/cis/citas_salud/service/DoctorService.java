@@ -180,8 +180,12 @@ public class DoctorService {
 
         String diagnostico = textoOpcional(datos.diagnostico());
         String tratamiento = textoOpcional(datos.tratamiento());
-        if (diagnostico == null) throw ApiException.datosInvalidos("Escribe el diagnóstico.");
-        if (tratamiento == null) throw ApiException.datosInvalidos("Escribe el tratamiento indicado.");
+        // Laboratorio, ecografía y rayos X registran la conclusión del examen y no indican tratamiento.
+        boolean apoyoDiagnostico = doctor.getEspecialidad().esApoyoDiagnostico();
+        if (diagnostico == null) {
+            throw ApiException.datosInvalidos(apoyoDiagnostico ? "Escribe la conclusión del examen." : "Escribe el diagnóstico.");
+        }
+        if (tratamiento == null && !apoyoDiagnostico) throw ApiException.datosInvalidos("Escribe el tratamiento indicado.");
 
         Atencion atencion = new Atencion();
         atencion.setHistoria(historiaRepository.findByPaciente_IdPaciente(cita.getPaciente().getIdPaciente())
@@ -315,7 +319,7 @@ public class DoctorService {
                 .orElseThrow(() -> ApiException.prohibido("Tu cuenta no tiene un perfil de doctor."));
     }
 
-    private static CitaAsignadaResponse respuesta(Cita c) {
+    static CitaAsignadaResponse respuesta(Cita c) {
         Horario h = c.getHorario();
         return new CitaAsignadaResponse(
                 c.getIdCita(),

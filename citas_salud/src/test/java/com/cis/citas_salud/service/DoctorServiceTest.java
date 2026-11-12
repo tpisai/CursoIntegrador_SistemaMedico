@@ -14,6 +14,7 @@ import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.DetalleMedicamento;
 import com.cis.citas_salud.entity.Doctor;
 import com.cis.citas_salud.entity.DocumentoMedico;
+import com.cis.citas_salud.entity.Especialidad;
 import com.cis.citas_salud.entity.HistoriaClinica;
 import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.entity.Notificacion;
@@ -315,6 +316,37 @@ class DoctorServiceTest {
                 () -> servicio.registrarAtencion(sesion, ID_CITA, atendido("Faringitis", null)));
 
         assertEquals("Escribe el tratamiento indicado.", error.getMessage());
+    }
+
+    @Test
+    void apoyoAlDiagnosticoRegistraLaConclusionSinTratamiento() {
+        doctor.getEspecialidad().setTipo(Especialidad.APOYO_DIAGNOSTICO);
+        existeElDoctor();
+        Cita cita = citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+        when(historiaRepository.findByPaciente_IdPaciente(1)).thenReturn(Optional.of(historia));
+
+        servicio.registrarAtencion(sesion, ID_CITA, atendido("Hemograma dentro de los valores de referencia.", null));
+
+        assertEquals(Cita.ATENDIDA, cita.getEstado());
+        ArgumentCaptor<Atencion> guardada = ArgumentCaptor.forClass(Atencion.class);
+        verify(atencionRepository).save(guardada.capture());
+        assertEquals("Hemograma dentro de los valores de referencia.", guardada.getValue().getDiagnostico());
+        assertNull(guardada.getValue().getTratamiento());
+    }
+
+    @Test
+    void apoyoAlDiagnosticoSinConclusionResponde400() {
+        doctor.getEspecialidad().setTipo(Especialidad.APOYO_DIAGNOSTICO);
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+
+        ApiException error = exigeError(HttpStatus.BAD_REQUEST,
+                () -> servicio.registrarAtencion(sesion, ID_CITA, atendido(" ", null)));
+
+        assertEquals("Escribe la conclusión del examen.", error.getMessage());
+        verify(atencionRepository, never()).save(any());
     }
 
     @Test

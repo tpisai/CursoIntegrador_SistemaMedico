@@ -168,7 +168,11 @@ public class CitaService {
         DocumentoMedico doc = documentoRepository.findById(idDocumento)
                 .filter(d -> d.getAtencion().getHistoria().getPaciente().getIdPaciente().equals(paciente.getIdPaciente()))
                 .orElseThrow(() -> ApiException.noEncontrado("No encontramos ese documento."));
+        return archivoDe(doc);
+    }
 
+    /** Contenido de un documento médico. Quien llama ya comprobó que el usuario puede verlo. */
+    Archivo archivoDe(DocumentoMedico doc) {
         Path ruta = carpetaArchivos.resolve(doc.getRutaArchivo()).normalize();
         String tipoMime = doc.getTipoMime() != null ? doc.getTipoMime() : "application/octet-stream";
         if (ruta.startsWith(carpetaArchivos) && Files.isRegularFile(ruta)) {
@@ -180,7 +184,7 @@ public class CitaService {
         }
 
         // Los documentos de demostración (sql/03_datos_iniciales.sql) no tienen archivo: se genera un PDF de muestra.
-        Usuario u = paciente.getUsuario();
+        Usuario u = doc.getAtencion().getHistoria().getPaciente().getUsuario();
         byte[] pdf = PdfSimple.crear(doc.getTipoDocumento(), List.of(
                 "Centro de Salud Miguel Grau · Chaclacayo",
                 "",

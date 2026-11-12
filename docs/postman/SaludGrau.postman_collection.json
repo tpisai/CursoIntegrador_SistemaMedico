@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "6f1c2b1e-5a3d-4e8a-9c41-5a1d7b2e0c11",
     "name": "SaludGrau",
-    "description": "Prueba de integración de la API de SaludGrau (EDT 5.1): auth, catálogo, citas, recepción, doctor, administración, campañas y notificaciones, con sus casos de error.\n\nIMPORTANTE: esta colección CREA DATOS (cuentas, citas, atenciones, solicitudes, campañas) y bloquea una cuenta de demostración durante 5 minutos. Ejecútala SOLO contra una base de prueba recién instalada, nunca contra la base centro_salud de trabajo. Para repetirla, reinstala la base de prueba. La primera petición detiene la corrida si la base ya se usó.\n\nCómo ejecutarla, desde la carpeta raíz del proyecto:\n\n1. Instalar la base de prueba (con -Reiniciar si ya existe):\n   powershell -ExecutionPolicy Bypass -File sql/instalar_bd.ps1 -BaseDeDatos centro_salud_prueba\n\n2. Levantar el backend (JDK 25) contra esa base, en el puerto 8081 y con una carpeta de archivos aparte. Debe arrancar después de instalar la base, porque genera los turnos al iniciar:\n   cd citas_salud\n   ./mvnw spring-boot:run \"-Dspring-boot.run.arguments=--server.port=8081 --spring.datasource.url=jdbc:postgresql://localhost:5432/centro_salud_prueba --saludgrau.archivos.carpeta=target/archivos-prueba\"\n\n3. Correr la colección:\n   npx newman run docs/postman/SaludGrau.postman_collection.json -e docs/postman/SaludGrau.postman_environment.json\n\nRequisitos: el orden de las carpetas importa, porque cada petición usa los datos que devuelven las anteriores (ids, tickets y tokens se guardan en variables de la colección). Newman y el backend deben usar la misma zona horaria. La corrida funciona cualquier día de la semana, pero no entre las 23:30 y las 00:00, porque necesita crear turnos para hoy.\n\nLas cuentas son las de sql/03_datos_iniciales.sql y están en el entorno, junto con baseUrl.",
+    "description": "Prueba de integración de la API de SaludGrau (EDT 5.1): auth, catálogo, citas, recepción, doctor, administración, campañas, notificaciones y consulta del doctor, con sus casos de error.\n\nIMPORTANTE: esta colección CREA DATOS (cuentas, citas, atenciones, solicitudes, campañas) y bloquea una cuenta de demostración durante 5 minutos. Ejecútala SOLO contra una base de prueba recién instalada, nunca contra la base centro_salud de trabajo. Para repetirla, reinstala la base de prueba. La primera petición detiene la corrida si la base ya se usó.\n\nCómo ejecutarla, desde la carpeta raíz del proyecto:\n\n1. Instalar la base de prueba (con -Reiniciar si ya existe):\n   powershell -ExecutionPolicy Bypass -File sql/instalar_bd.ps1 -BaseDeDatos centro_salud_prueba\n\n2. Levantar el backend (JDK 25) contra esa base, en el puerto 8081 y con una carpeta de archivos aparte. Debe arrancar después de instalar la base, porque genera los turnos al iniciar:\n   cd citas_salud\n   ./mvnw spring-boot:run \"-Dspring-boot.run.arguments=--server.port=8081 --spring.datasource.url=jdbc:postgresql://localhost:5432/centro_salud_prueba --saludgrau.archivos.carpeta=target/archivos-prueba\"\n\n3. Correr la colección:\n   npx newman run docs/postman/SaludGrau.postman_collection.json -e docs/postman/SaludGrau.postman_environment.json\n\nRequisitos: el orden de las carpetas importa, porque cada petición usa los datos que devuelven las anteriores (ids, tickets y tokens se guardan en variables de la colección). Newman y el backend deben usar la misma zona horaria. La corrida funciona cualquier día de la semana, pero no entre las 23:30 y las 00:00, porque necesita crear turnos para hoy.\n\nLas cuentas son las de sql/03_datos_iniciales.sql, más la del laboratorio (sql/08_consulta_medica.sql), y están en el entorno, junto con baseUrl.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -7697,6 +7697,1628 @@
                   "pm.test(\"Todas figuran como leídas\", () => {",
                   "  pm.expect(json).to.be.an('array').and.not.empty;",
                   "  pm.expect(json.every((n) => n.leida === true)).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notificaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPaciente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11 Doctor: consulta, historia clínica y exámenes",
+      "description": "Página de consulta del doctor: agenda por rango de fechas, historia clínica del paciente con sus antecedentes y documentos, y reporte de exámenes del laboratorio (servicio de apoyo al diagnóstico). Usa la cita atendida en la carpeta 06 y la cita de laboratorio de hoy que crea sql/08_consulta_medica.sql.",
+      "item": [
+        {
+          "name": "Login laboratorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"La cuenta del laboratorio entra como doctor\", () => {",
+                  "  pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.usuario.dni).to.equal(pm.variables.get('dniLaboratorio'));",
+                  "  pm.expect(json.usuario.rol).to.equal('DOCTOR');",
+                  "});",
+                  "pm.collectionVariables.set('tokenLaboratorio', json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dniLaboratorio}}\",\n  \"pin\": \"{{pinLaboratorio}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Sin fechas trae solo las citas de hoy, con las ya cerradas\", () => {",
+                  "  pm.expect(json.every((c) => c.fecha === pm.collectionVariables.get('hoy'))).to.equal(true);",
+                  "  const atendida = json.find((c) => c.idCita === Number(pm.collectionVariables.get('idCitaHoy1')));",
+                  "  const ausente = json.find((c) => c.idCita === Number(pm.collectionVariables.get('idCitaHoy2')));",
+                  "  pm.expect(atendida.estado).to.equal('ATENDIDA');",
+                  "  pm.expect(ausente.estado).to.equal('NO_ASISTIO');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda por rango de fechas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Todas las citas caen dentro del rango pedido\", () => {",
+                  "  const desde = pm.collectionVariables.get('hoy');",
+                  "  const hasta = pm.collectionVariables.get('enUnaSemana');",
+                  "  pm.expect(json.length).to.be.at.least(2);",
+                  "  pm.expect(json.every((c) => c.fecha >= desde && c.fecha <= hasta)).to.equal(true);",
+                  "});",
+                  "pm.test(\"Vienen ordenadas por fecha y hora\", () => {",
+                  "  const orden = json.map((c) => c.fecha + ' ' + c.horaInicio);",
+                  "  pm.expect(orden).to.eql([...orden].sort());",
+                  "});",
+                  "pm.test(\"No trae citas canceladas\", () => {",
+                  "  pm.expect(json.some((c) => c.estado === 'CANCELADA')).to.equal(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda?desde={{hoy}}&hasta={{enUnaSemana}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{hoy}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{enUnaSemana}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda de un solo día",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sin fecha final, el rango es el día inicial\", () => {",
+                  "  pm.expect(pm.response.json().every((c) => c.fecha === pm.collectionVariables.get('ayer'))).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda?desde={{ayer}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{ayer}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda con un rango de más de 31 días",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: Elige un rango de hasta 31 días.\", () => pm.expect(pm.response.json().message).to.include(\"Elige un rango de hasta 31 días.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda?desde=2026-01-01&hasta=2026-02-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-02-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda con la fecha final antes de la inicial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: La fecha final debe ser igual o posterior a la inicial.\", () => pm.expect(pm.response.json().message).to.include(\"La fecha final debe ser igual o posterior a la inicial.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda?desde={{hoy}}&hasta={{ayer}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{hoy}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{ayer}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda con fecha mal escrita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda?desde=ayer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "ayer"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda con cuenta de paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPaciente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta de una cita atendida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Trae la cita, el paciente y el modo de atención\", () => {",
+                  "  pm.expect(json.cita.idCita).to.equal(Number(pm.collectionVariables.get('idCitaHoy1')));",
+                  "  pm.expect(json.modo).to.equal('CONSULTA');",
+                  "  pm.expect(json.especialidad).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.paciente.dni).to.equal(pm.variables.get('dniPaciente'));",
+                  "  pm.expect(json.paciente.numeroHistoria).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.paciente.edad).to.be.a('number');",
+                  "});",
+                  "pm.test(\"Una cita ya atendida no se vuelve a atender\", () => {",
+                  "  pm.expect(json.puedeAtender).to.equal(false);",
+                  "  pm.expect(json.idAtencion).to.equal(Number(pm.collectionVariables.get('idAtencion')));",
+                  "});",
+                  "pm.test(\"La historia clínica incluye la atención con su documento\", () => {",
+                  "  const atencion = json.historial.find((a) => a.idAtencion === Number(pm.collectionVariables.get('idAtencion')));",
+                  "  pm.expect(atencion.propia).to.equal(true);",
+                  "  pm.expect(atencion.tipoEspecialidad).to.equal('CONSULTA');",
+                  "  pm.expect(atencion.diagnostico).to.equal('Faringitis aguda.');",
+                  "  pm.expect(atencion.documentos.map((d) => d.idDocumento)).to.include(Number(pm.collectionVariables.get('idDocumentoNuevo')));",
+                  "});",
+                  "pm.test(\"La historia va de la atención más reciente a la más antigua\", () => {",
+                  "  const fechas = json.historial.map((a) => a.fecha);",
+                  "  pm.expect(fechas).to.eql([...fechas].sort().reverse());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta de una cita de otro doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Mensaje: No encontramos esa cita en tu agenda.\", () => pm.expect(pm.response.json().message).to.include(\"No encontramos esa cita en tu agenda.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta de una cita inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Mensaje: No encontramos esa cita en tu agenda.\", () => pm.expect(pm.response.json().message).to.include(\"No encontramos esa cita en tu agenda.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/999999/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "999999",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta con cuenta de paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPaciente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar los antecedentes del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Guarda los antecedentes y deja vacío lo que llega en blanco\", () => {",
+                  "  pm.expect(json.alergias).to.equal('Penicilina. Registrado desde Postman.');",
+                  "  pm.expect(json.antecedentes).to.equal('Asma leve desde la infancia.');",
+                  "  pm.expect(json.medicacionHabitual).to.equal(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/antecedentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "antecedentes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alergias\": \"Penicilina. Registrado desde Postman.\",\n  \"antecedentes\": \"Asma leve desde la infancia.\",\n  \"medicacionHabitual\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Antecedentes demasiado largos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: Las alergias son demasiado largas.\", () => pm.expect(pm.response.json().message).to.include(\"Las alergias son demasiado largas.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/antecedentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "antecedentes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alergias\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Antecedentes de una cita de otro doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Mensaje: No encontramos esa cita en tu agenda.\", () => pm.expect(pm.response.json().message).to.include(\"No encontramos esa cita en tu agenda.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/antecedentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "antecedentes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alergias\": \"Ninguna\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "El doctor descarga un documento del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Devuelve el archivo con su nombre\", () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include('receta-postman.pdf');",
+                  "  pm.expect(pm.response.text()).to.include('Receta de prueba');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/documentos/{{idDocumentoNuevo}}/descarga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "documentos",
+                "{{idDocumentoNuevo}}",
+                "descarga"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Otro doctor que también atiende al paciente descarga el documento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/documentos/{{idDocumentoNuevo}}/descarga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "documentos",
+                "{{idDocumentoNuevo}}",
+                "descarga"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Documento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Mensaje: No encontramos ese documento.\", () => pm.expect(pm.response.json().message).to.include(\"No encontramos ese documento.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/documentos/999999/descarga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "documentos",
+                "999999",
+                "descarga"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Documento con cuenta de paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/documentos/{{idDocumentoNuevo}}/descarga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "documentos",
+                "{{idDocumentoNuevo}}",
+                "descarga"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPaciente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Agenda del laboratorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const pendiente = json.find((c) => c.estado === 'CONFIRMADA' || c.estado === 'RESERVADA');",
+                  "pm.test(\"El laboratorio tiene una cita pendiente hoy\", () => {",
+                  "  pm.expect(pendiente).to.be.an('object');",
+                  "  pm.expect(pendiente.consultorio).to.include('Laboratorio');",
+                  "});",
+                  "pm.collectionVariables.set('idCitaLaboratorio', pendiente.idCita);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/agenda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "agenda"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta del laboratorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Un servicio de apoyo al diagnóstico atiende con el reporte de exámenes\", () => {",
+                  "  pm.expect(json.modo).to.equal('APOYO_DIAGNOSTICO');",
+                  "  pm.expect(json.especialidad).to.equal('Laboratorio');",
+                  "  pm.expect(json.puedeAtender).to.equal(true);",
+                  "  pm.expect(json.idAtencion).to.equal(null);",
+                  "});",
+                  "pm.test(\"La historia trae los resultados de los exámenes anteriores\", () => {",
+                  "  const anterior = json.historial.find((a) => a.propia && a.resultados.length > 0);",
+                  "  pm.expect(anterior.tipoEspecialidad).to.equal('APOYO_DIAGNOSTICO');",
+                  "  pm.expect(anterior.resultados[0].tipoExamen).to.be.a('string').and.not.empty;",
+                  "  pm.expect(anterior.resultados[0].resultado).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaLaboratorio}}/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaLaboratorio}}",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reporte de exámenes con cuenta de consulta externa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test(\"Mensaje: Solo los servicios de apoyo al diagnóstico reportan resultados de exámenes.\", () => pm.expect(pm.response.json().message).to.include(\"Solo los servicios de apoyo al diagnóstico reportan resultados de exámenes.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencion}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencion}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": [\n    {\n      \"tipoExamen\": \"Colesterol total\",\n      \"resultado\": \"182 mg/dL\",\n      \"valorReferencia\": \"Menor de 200 mg/dL\",\n      \"interpretacion\": \"Normal\"\n    },\n    {\n      \"tipoExamen\": \"Triglicéridos\",\n      \"resultado\": \"140 mg/dL\",\n      \"valorReferencia\": \"Menor de 150 mg/dL\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Atención del laboratorio sin conclusión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: Escribe la conclusión del examen.\", () => pm.expect(pm.response.json().message).to.include(\"Escribe la conclusión del examen.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaLaboratorio}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaLaboratorio}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asistio\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar la atención del laboratorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"El laboratorio cierra la cita sin indicar tratamiento\", () => {",
+                  "  pm.expect(json.idCita).to.equal(Number(pm.collectionVariables.get('idCitaLaboratorio')));",
+                  "  pm.expect(json.estadoCita).to.equal('ATENDIDA');",
+                  "  pm.expect(json.idAtencion).to.be.a('number');",
+                  "});",
+                  "pm.collectionVariables.set('idAtencionLaboratorio', json.idAtencion);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaLaboratorio}}/atencion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaLaboratorio}}",
+                "atencion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asistio\": true,\n  \"diagnostico\": \"Perfil lipídico dentro de los valores de referencia.\",\n  \"observaciones\": \"Muestra tomada en ayunas. Registrado desde Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reporte de exámenes sin resultados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: Agrega al menos un examen.\", () => pm.expect(pm.response.json().message).to.include(\"Agrega al menos un examen.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencionLaboratorio}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencionLaboratorio}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reporte con un examen sin resultado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test(\"Mensaje: Escribe el resultado de cada examen.\", () => pm.expect(pm.response.json().message).to.include(\"Escribe el resultado de cada examen.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencionLaboratorio}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencionLaboratorio}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": [\n    {\n      \"tipoExamen\": \"Colesterol total\",\n      \"resultado\": \"\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reporte de exámenes en la atención de otro doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Mensaje: No encontramos esa atención.\", () => pm.expect(pm.response.json().message).to.include(\"No encontramos esa atención.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencion}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencion}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": [\n    {\n      \"tipoExamen\": \"Colesterol total\",\n      \"resultado\": \"182 mg/dL\",\n      \"valorReferencia\": \"Menor de 200 mg/dL\",\n      \"interpretacion\": \"Normal\"\n    },\n    {\n      \"tipoExamen\": \"Triglicéridos\",\n      \"resultado\": \"140 mg/dL\",\n      \"valorReferencia\": \"Menor de 150 mg/dL\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar el reporte de exámenes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Devuelve los exámenes en el orden en que se registraron\", () => {",
+                  "  pm.expect(json.map((r) => r.tipoExamen)).to.eql(['Colesterol total', 'Triglicéridos']);",
+                  "  pm.expect(json[0].resultado).to.equal('182 mg/dL');",
+                  "  pm.expect(json[0].valorReferencia).to.equal('Menor de 200 mg/dL');",
+                  "  pm.expect(json[0].interpretacion).to.equal('Normal');",
+                  "  pm.expect(json[1].interpretacion).to.equal(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencionLaboratorio}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencionLaboratorio}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": [\n    {\n      \"tipoExamen\": \"Colesterol total\",\n      \"resultado\": \"182 mg/dL\",\n      \"valorReferencia\": \"Menor de 200 mg/dL\",\n      \"interpretacion\": \"Normal\"\n    },\n    {\n      \"tipoExamen\": \"Triglicéridos\",\n      \"resultado\": \"140 mg/dL\",\n      \"valorReferencia\": \"Menor de 150 mg/dL\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar el reporte por segunda vez",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test(\"Mensaje: Esta atención ya tiene resultados registrados.\", () => pm.expect(pm.response.json().message).to.include(\"Esta atención ya tiene resultados registrados.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/atenciones/{{idAtencionLaboratorio}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "atenciones",
+                "{{idAtencionLaboratorio}}",
+                "resultados"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenLaboratorio}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultados\": [\n    {\n      \"tipoExamen\": \"Colesterol total\",\n      \"resultado\": \"182 mg/dL\",\n      \"valorReferencia\": \"Menor de 200 mg/dL\",\n      \"interpretacion\": \"Normal\"\n    },\n    {\n      \"tipoExamen\": \"Triglicéridos\",\n      \"resultado\": \"140 mg/dL\",\n      \"valorReferencia\": \"Menor de 150 mg/dL\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "El médico ve los resultados del laboratorio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const examen = json.historial.find((a) => a.idAtencion === Number(pm.collectionVariables.get('idAtencionLaboratorio')));",
+                  "pm.test(\"La historia clínica muestra el reporte que registró el laboratorio\", () => {",
+                  "  pm.expect(examen.propia).to.equal(false);",
+                  "  pm.expect(examen.especialidad).to.equal('Laboratorio');",
+                  "  pm.expect(examen.tipoEspecialidad).to.equal('APOYO_DIAGNOSTICO');",
+                  "  pm.expect(examen.diagnostico).to.equal('Perfil lipídico dentro de los valores de referencia.');",
+                  "  pm.expect(examen.resultados).to.have.lengthOf(2);",
+                  "});",
+                  "pm.test(\"Y los antecedentes que guardó en la consulta\", () => {",
+                  "  pm.expect(json.paciente.alergias).to.equal('Penicilina. Registrado desde Postman.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/citas/{{idCitaHoy1}}/consulta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "citas",
+                "{{idCitaHoy1}}",
+                "consulta"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenDoctor}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "El paciente recibe el aviso de los resultados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Hay una notificación de resultados disponibles\", () => {",
+                  "  const aviso = pm.response.json().find((n) => n.titulo === 'Resultados de exámenes disponibles');",
+                  "  pm.expect(aviso).to.be.an('object');",
+                  "  pm.expect(aviso.mensaje).to.include('Laboratorio registró los resultados de 2 exámenes');",
                   "});"
                 ]
               }

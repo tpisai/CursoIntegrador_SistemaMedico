@@ -79,11 +79,28 @@ public class CitaController {
                         .filename(archivo.nombre(), StandardCharsets.UTF_8).build().toString())
                 .body(archivo.contenido());
     }
+
     @GetMapping("/pacientes/me/citas/{id}/receta")
     public ResponseEntity<byte[]> receta(
             UsuarioSesion sesion,
             @PathVariable("id") Integer idCita) {
 
         return descarga(citaService.receta(sesion, idCita));
+    }
+
+    @GetMapping("/pacientes/me/citas/{id}/constancia")
+    public ResponseEntity<byte[]> constancia(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idCita) {
+
+        return descarga(citaService.constancia(sesion, idCita));
+    }
+
+    @GetMapping("/pacientes/me/citas/{id}/certificado")
+    public ResponseEntity<byte[]> certificado(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idCita) {
+
+        return descarga(citaService.certificado(sesion, idCita));
     }
 }

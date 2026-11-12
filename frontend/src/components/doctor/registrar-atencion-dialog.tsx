@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useSWRConfig } from "swr"
-import { CircleAlertIcon, UserCheckIcon, UserXIcon, PlusIcon, Trash2Icon, FileDownIcon } from "lucide-react"
+import { CircleAlertIcon, UserCheckIcon, UserXIcon, PlusIcon, Trash2Icon, FileDownIcon, FileCheck2Icon, FileTextIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -16,10 +16,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { CampoSelect } from "@/components/portal/campo-select"
 import { useTiposDocumento } from "@/hooks/use-doctor"
 import { registrarAtencion, subirDocumento, descargarReceta } from "@/lib/api/doctor"
-import { mensajeDeError } from "@/lib/api/http"
+import { mensajeDeError, requestArchivo } from "@/lib/api/http"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
-import type { CitaAsignada } from "@/lib/api/types"
-import type { MedicamentoRequest } from "@/lib/api/types"
+import type { CitaAsignada, MedicamentoRequest } from "@/lib/api/types"
 import { formatDiaHora } from "@/lib/format"
 
 const MAX_ARCHIVO = 5 * 1024 * 1024
@@ -82,12 +81,13 @@ export function RegistrarAtencionDialog({
   const [claveArchivo, setClaveArchivo] = useState(0)
   const [idAtencionRegistrada, setIdAtencionRegistrada] = useState<number | null>(null)
   const [descargandoReceta, setDescargandoReceta] = useState(false)
+  const [descargandoConstancia, setDescargandoConstancia] = useState(false)
+  const [descargandoCertificado, setDescargandoCertificado] = useState(false)
   const [guardando, startTransition] = useTransition()
   const asistio = datos.asistio === "SI"
 
   function actualizar<K extends keyof Datos>(campo: K, valor: Datos[K]) {
     setDatos((d) => ({ ...d, [campo]: valor }))
-    // El aviso de un campo desaparece en cuanto se corrige.
     setErrores((e) => ({ ...e, [campo]: undefined }))
   }
 
@@ -108,16 +108,12 @@ export function RegistrarAtencionDialog({
       const archivo = await descargarReceta(idAtencionRegistrada)
       const url = window.URL.createObjectURL(archivo)
       const enlace = document.createElement("a")
-
       enlace.href = url
       enlace.download = `receta-${idAtencionRegistrada}.pdf`
-
       document.body.appendChild(enlace)
       enlace.click()
       enlace.remove()
-
       window.URL.revokeObjectURL(url)
-
       toast.success("Receta médica descargada correctamente.")
     } catch (error) {
       toast.error(mensajeDeError(error))
@@ -126,8 +122,51 @@ export function RegistrarAtencionDialog({
     }
   }
 
+  async function onDescargarConstancia() {
+    if (!idAtencionRegistrada) return
+    setDescargandoConstancia(true)
+    try {
+      const archivo = await requestArchivo(`/doctor/atenciones/${idAtencionRegistrada}/constancia`)
+      const url = window.URL.createObjectURL(archivo)
+      const enlace = document.createElement("a")
+      enlace.href = url
+      enlace.download = `constancia-${idAtencionRegistrada}.pdf`
+      document.body.appendChild(enlace)
+      enlace.click()
+      enlace.remove()
+      window.open(url, "_blank")
+      toast.success("Constancia de atención generada correctamente.")
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoConstancia(false)
+    }
+  }
+
+  async function onDescargarCertificado() {
+    if (!idAtencionRegistrada) return
+    setDescargandoCertificado(true)
+    try {
+      const archivo = await requestArchivo(`/doctor/atenciones/${idAtencionRegistrada}/certificado`)
+      const url = window.URL.createObjectURL(archivo)
+      const enlace = document.createElement("a")
+      enlace.href = url
+      enlace.download = `certificado-${idAtencionRegistrada}.pdf`
+      document.body.appendChild(enlace)
+      enlace.click()
+      enlace.remove()
+      window.open(url, "_blank")
+      toast.success("Certificado médico generado correctamente.")
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoCertificado(false)
+    }
+  }
+
   function agregarMedicamento() {
-    setMedicamentos((actuales) => [...actuales,
+    setMedicamentos((actuales) => [
+      ...actuales,
       {
         nombreMedicamento: "",
         dosis: "",
@@ -148,13 +187,18 @@ export function RegistrarAtencionDialog({
     valor: string
   ) {
     setMedicamentos((actuales) =>
-      actuales.map((medicamento, i) => i === indice ? { ...medicamento, [campo]: valor } : medicamento))
+      actuales.map((medicamento, i) => (i === indice ? { ...medicamento, [campo]: valor } : medicamento))
+    )
   }
 
   function eliminarMedicamento(indice: number) {
     setMedicamentos((actuales) =>
-      actuales.filter((_, i) => i !== indice).map((medicamento, i) => ({
-        ...medicamento,orden: i + 1,}))
+      actuales
+        .filter((_, i) => i !== indice)
+        .map((medicamento, i) => ({
+          ...medicamento,
+          orden: i + 1,
+        }))
     )
   }
 
@@ -223,239 +267,302 @@ export function RegistrarAtencionDialog({
           </DialogHeader>
 
           <form onSubmit={onSubmit} noValidate>
-           {idAtencionRegistrada ? (
-            <Alert>
-              <FileDownIcon />
-              <AlertDescription>
-                La atención se registró correctamente en la historia clínica.
-                Ya puedes descargar la receta médica en formato PDF.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <FieldGroup className="gap-4">
-              <Field>
-                <FieldTitle id="atencion-asistio">¿El paciente asistió?</FieldTitle>
-                <ToggleGroup
-                  type="single"
-                  variant="slot"
-                  size="lg"
-                  spacing={2}
-                  aria-labelledby="atencion-asistio"
-                  className="grid w-full grid-cols-2"
-                  value={datos.asistio}
-                  onValueChange={(v) => v && actualizar("asistio", v as Datos["asistio"])}
-                >
-                  <ToggleGroupItem value="SI" className="w-full">
-                    <UserCheckIcon data-icon="inline-start" />
-                    Asistió
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="NO" className="w-full">
-                    <UserXIcon data-icon="inline-start" />
-                    No asistió
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </Field>
+            {idAtencionRegistrada ? (
+              <Alert>
+                <FileDownIcon />
+                <AlertDescription>
+                  La atención se registró correctamente en la historia clínica.
+                  Ya puedes descargar la receta médica, la constancia de atención y el certificado médico en PDF.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <FieldGroup className="gap-4">
+                <Field>
+                  <FieldTitle id="atencion-asistio">¿El paciente asistió?</FieldTitle>
+                  <ToggleGroup
+                    type="single"
+                    variant="slot"
+                    size="lg"
+                    spacing={2}
+                    aria-labelledby="atencion-asistio"
+                    className="grid w-full grid-cols-2"
+                    value={datos.asistio}
+                    onValueChange={(v) => v && actualizar("asistio", v as Datos["asistio"])}
+                  >
+                    <ToggleGroupItem value="SI" className="w-full">
+                      <UserCheckIcon data-icon="inline-start" />
+                      Asistió
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="NO" className="w-full">
+                      <UserXIcon data-icon="inline-start" />
+                      No asistió
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </Field>
 
-              {asistio ? (
-                <>
-                  <Field>
-                    <FieldLabel htmlFor="atencion-anamnesis">Motivo de consulta y síntomas</FieldLabel>
-                    <Textarea
-                      id="atencion-anamnesis"
-                      placeholder="Ej. Dolor de cabeza desde hace 3 días, sin fiebre."
-                      maxLength={2000}
-                      value={datos.anamnesis}
-                      onChange={(e) => actualizar("anamnesis", e.target.value)}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="atencion-examen">Examen físico</FieldLabel>
-                    <Textarea
-                      id="atencion-examen"
-                      placeholder="Ej. PA 120/80 mmHg, FC 76 lpm, afebril."
-                      maxLength={2000}
-                      value={datos.examenFisico}
-                      onChange={(e) => actualizar("examenFisico", e.target.value)}
-                    />
-                  </Field>
-                  <Field data-invalid={!!errores.diagnostico}>
-                    <FieldLabel htmlFor="atencion-diagnostico">Diagnóstico</FieldLabel>
-                    <Textarea
-                      id="atencion-diagnostico"
-                      placeholder="Ej. Cefalea tensional."
-                      maxLength={2000}
-                      aria-invalid={!!errores.diagnostico}
-                      value={datos.diagnostico}
-                      onChange={(e) => actualizar("diagnostico", e.target.value)}
-                    />
-                    <FieldError>{errores.diagnostico}</FieldError>
-                  </Field>
-                  <Field data-invalid={!!errores.tratamiento}>
-                    <FieldLabel htmlFor="atencion-tratamiento">Tratamiento</FieldLabel>
-                    <Textarea
-                      id="atencion-tratamiento"
-                      placeholder="Ej. Paracetamol 500 mg cada 8 horas por 3 días."
-                      maxLength={2000}
-                      aria-invalid={!!errores.tratamiento}
-                      value={datos.tratamiento}
-                      onChange={(e) => actualizar("tratamiento", e.target.value)}
-                    />
-                    <FieldError>{errores.tratamiento}</FieldError>
-                  </Field>
-                  <FieldSet>
-                    <FieldLegend variant="label">Medicamentos recetados</FieldLegend>
-                    <FieldDescription>Agrega los medicamentos indicados al paciente.</FieldDescription>
-                    <div className="flex flex-col gap-4">
-                      {medicamentos.map((medicamento, indice) => (
-                        <div key={indice} className="rounded-lg border p-4">
-                          <div className="mb-3 flex items-center justify-between">
-                            <span className="text-sm font-semibold">Medicamento {indice + 1}</span>
-                            <Button type="button" variant="ghost" size="icon"
-                              onClick={() => eliminarMedicamento(indice)}
-                              aria-label={`Eliminar medicamento ${indice + 1}`}>
-                              <Trash2Icon className="size-4" />
-                            </Button>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <Field className="sm:col-span-2">
-                              <FieldLabel>Nombre del medicamento</FieldLabel>
-                              <Input placeholder="Ej. Paracetamol" value={medicamento.nombreMedicamento}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "nombreMedicamento", e.target.value)
-                                }
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Dosis</FieldLabel>
-                              <Input placeholder="Ej. 500 mg" value={medicamento.dosis ?? ""}
-                                onChange={(e) => actualizarMedicamento(indice, "dosis", e.target.value)}
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Presentación</FieldLabel>
-                              <Input placeholder="Ej. Tableta" value={medicamento.presentacion ?? ""}
-                                onChange={(e) => actualizarMedicamento(indice, "presentacion", e.target.value)}
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Vía de administración</FieldLabel>
-                              <Input placeholder="Ej. Oral" value={medicamento.viaAdministracion ?? ""}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "viaAdministracion", e.target.value)}
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Unidades por toma</FieldLabel>
-                              <Input placeholder="Ej. 1 tableta" value={medicamento.unidadesPorToma ?? ""}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "unidadesPorToma", e.target.value)}
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Frecuencia</FieldLabel>
-                              <Input placeholder="Ej. Cada 8 horas" value={medicamento.frecuencia ?? ""}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "frecuencia", e.target.value)}
-                              />
-                            </Field>
-                            <Field>
-                              <FieldLabel>Duración</FieldLabel>
-                              <Input placeholder="Ej. 3 días" value={medicamento.duracion ?? ""}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "duracion", e.target.value)}
-                              />
-                            </Field>
-                            <Field className="sm:col-span-2">
-                              <FieldLabel>Cantidad total</FieldLabel>
-                              <Input placeholder="Ej. 9 tabletas" value={medicamento.cantidad ?? ""}
-                                onChange={(e) => actualizarMedicamento(
-                                    indice, "cantidad", e.target.value)}
-                              />
-                            </Field>
-                          </div>
-                        </div>
-                      ))}
-                      <Button type="button" variant="outline" className="w-full" onClick={agregarMedicamento}>
-                        <PlusIcon data-icon="inline-start" />
-                        Agregar medicamento
-                      </Button>
-                    </div>
-                  </FieldSet>
-                  <Field>
-                    <FieldLabel htmlFor="atencion-observaciones">Observaciones</FieldLabel>
-                    <Textarea id="atencion-observaciones" placeholder="Ej. Control en una semana."
-                      maxLength={2000} value={datos.observaciones}
-                      onChange={(e) => actualizar("observaciones", e.target.value)}
-                    />
-                  </Field>
-                  <FieldSet>
-                    <FieldLegend variant="label">Documento adjunto (opcional)</FieldLegend>
-                    <FieldDescription>Receta, resultados o informe. El paciente podrá descargarlo.</FieldDescription>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <CampoSelect id="atencion-tipo-documento" etiqueta="Tipo de documento"
-                        placeholder="Elige el tipo"
-                        opciones={tipos.data?.map((t) => ({ valor: t, texto: t }))}
-                        valor={datos.tipoDocumento}
-                        onCambio={(v) => actualizar("tipoDocumento", v)}
-                        error={errores.tipoDocumento}
+                {asistio ? (
+                  <>
+                    <Field>
+                      <FieldLabel htmlFor="atencion-anamnesis">Motivo de consulta y síntomas</FieldLabel>
+                      <Textarea
+                        id="atencion-anamnesis"
+                        placeholder="Ej. Dolor de cabeza desde hace 3 días, sin fiebre."
+                        maxLength={2000}
+                        value={datos.anamnesis}
+                        onChange={(e) => actualizar("anamnesis", e.target.value)}
                       />
-                      <Field data-invalid={!!errores.archivo}>
-                        <FieldLabel htmlFor="atencion-archivo">Archivo (PDF, JPG o PNG, hasta 5 MB)</FieldLabel>
-                        <Input key={claveArchivo} id="atencion-archivo"
-                          type="file" accept="application/pdf,image/jpeg,image/png"
-                          className="h-11" aria-invalid={!!errores.archivo}
-                          onChange={(e) => actualizar("archivo", e.target.files?.[0] ?? null)}
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="atencion-examen">Examen físico</FieldLabel>
+                      <Textarea
+                        id="atencion-examen"
+                        placeholder="Ej. PA 120/80 mmHg, FC 76 lpm, afebril."
+                        maxLength={2000}
+                        value={datos.examenFisico}
+                        onChange={(e) => actualizar("examenFisico", e.target.value)}
+                      />
+                    </Field>
+                    <Field data-invalid={!!errores.diagnostico}>
+                      <FieldLabel htmlFor="atencion-diagnostico">Diagnóstico</FieldLabel>
+                      <Textarea
+                        id="atencion-diagnostico"
+                        placeholder="Ej. Cefalea tensional."
+                        maxLength={2000}
+                        aria-invalid={!!errores.diagnostico}
+                        value={datos.diagnostico}
+                        onChange={(e) => actualizar("diagnostico", e.target.value)}
+                      />
+                      <FieldError>{errores.diagnostico}</FieldError>
+                    </Field>
+                    <Field data-invalid={!!errores.tratamiento}>
+                      <FieldLabel htmlFor="atencion-tratamiento">Tratamiento</FieldLabel>
+                      <Textarea
+                        id="atencion-tratamiento"
+                        placeholder="Ej. Paracetamol 500 mg cada 8 horas por 3 días."
+                        maxLength={2000}
+                        aria-invalid={!!errores.tratamiento}
+                        value={datos.tratamiento}
+                        onChange={(e) => actualizar("tratamiento", e.target.value)}
+                      />
+                      <FieldError>{errores.tratamiento}</FieldError>
+                    </Field>
+                    <FieldSet>
+                      <FieldLegend variant="label">Medicamentos recetados</FieldLegend>
+                      <FieldDescription>Agrega los medicamentos indicados al paciente.</FieldDescription>
+                      <div className="flex flex-col gap-4">
+                        {medicamentos.map((medicamento, indice) => (
+                          <div key={indice} className="rounded-lg border p-4">
+                            <div className="mb-3 flex items-center justify-between">
+                              <span className="text-sm font-semibold">Medicamento {indice + 1}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => eliminarMedicamento(indice)}
+                                aria-label={`Eliminar medicamento ${indice + 1}`}
+                              >
+                                <Trash2Icon className="size-4" />
+                              </Button>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <Field className="sm:col-span-2">
+                                <FieldLabel>Nombre del medicamento</FieldLabel>
+                                <Input
+                                  placeholder="Ej. Paracetamol"
+                                  value={medicamento.nombreMedicamento}
+                                  onChange={(e) =>
+                                    actualizarMedicamento(indice, "nombreMedicamento", e.target.value)
+                                  }
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Dosis</FieldLabel>
+                                <Input
+                                  placeholder="Ej. 500 mg"
+                                  value={medicamento.dosis ?? ""}
+                                  onChange={(e) => actualizarMedicamento(indice, "dosis", e.target.value)}
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Presentación</FieldLabel>
+                                <Input
+                                  placeholder="Ej. Tableta"
+                                  value={medicamento.presentacion ?? ""}
+                                  onChange={(e) => actualizarMedicamento(indice, "presentacion", e.target.value)}
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Vía de administración</FieldLabel>
+                                <Input
+                                  placeholder="Ej. Oral"
+                                  value={medicamento.viaAdministracion ?? ""}
+                                  onChange={(e) =>
+                                    actualizarMedicamento(indice, "viaAdministracion", e.target.value)
+                                  }
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Unidades por toma</FieldLabel>
+                                <Input
+                                  placeholder="Ej. 1 tableta"
+                                  value={medicamento.unidadesPorToma ?? ""}
+                                  onChange={(e) =>
+                                    actualizarMedicamento(indice, "unidadesPorToma", e.target.value)
+                                  }
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Frecuencia</FieldLabel>
+                                <Input
+                                  placeholder="Ej. Cada 8 horas"
+                                  value={medicamento.frecuencia ?? ""}
+                                  onChange={(e) => actualizarMedicamento(indice, "frecuencia", e.target.value)}
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Duración</FieldLabel>
+                                <Input
+                                  placeholder="Ej. 3 días"
+                                  value={medicamento.duracion ?? ""}
+                                  onChange={(e) => actualizarMedicamento(indice, "duracion", e.target.value)}
+                                />
+                              </Field>
+                              <Field className="sm:col-span-2">
+                                <FieldLabel>Cantidad total</FieldLabel>
+                                <Input
+                                  placeholder="Ej. 9 tabletas"
+                                  value={medicamento.cantidad ?? ""}
+                                  onChange={(e) => actualizarMedicamento(indice, "cantidad", e.target.value)}
+                                />
+                              </Field>
+                            </div>
+                          </div>
+                        ))}
+                        <Button type="button" variant="outline" className="w-full" onClick={agregarMedicamento}>
+                          <PlusIcon data-icon="inline-start" />
+                          Agregar medicamento
+                        </Button>
+                      </div>
+                    </FieldSet>
+                    <Field>
+                      <FieldLabel htmlFor="atencion-observaciones">Observaciones</FieldLabel>
+                      <Textarea
+                        id="atencion-observaciones"
+                        placeholder="Ej. Control en una semana."
+                        maxLength={2000}
+                        value={datos.observaciones}
+                        onChange={(e) => actualizar("observaciones", e.target.value)}
+                      />
+                    </Field>
+                    <FieldSet>
+                      <FieldLegend variant="label">Documento adjunto (opcional)</FieldLegend>
+                      <FieldDescription>Receta, resultados o informe. El paciente podrá descargarlo.</FieldDescription>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <CampoSelect
+                          id="atencion-tipo-documento"
+                          etiqueta="Tipo de documento"
+                          placeholder="Elige el tipo"
+                          opciones={tipos.data?.map((t) => ({ valor: t, texto: t }))}
+                          valor={datos.tipoDocumento}
+                          onCambio={(v) => actualizar("tipoDocumento", v)}
+                          error={errores.tipoDocumento}
                         />
-                        <FieldError>{errores.archivo}</FieldError>
-                      </Field>
-                    </div>
-                  </FieldSet>
-                </>
-              ) : (
-                <Alert variant="warning">
-                  <UserXIcon />
-                  <AlertDescription>
-                    La cita quedará como &quot;No asistió&quot; en el historial del paciente y cuenta para el
-                    indicador de ausentismo.
-                  </AlertDescription>
-                </Alert>
-              )}
+                        <Field data-invalid={!!errores.archivo}>
+                          <FieldLabel htmlFor="atencion-archivo">Archivo (PDF, JPG o PNG, hasta 5 MB)</FieldLabel>
+                          <Input
+                            key={claveArchivo}
+                            id="atencion-archivo"
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png"
+                            className="h-11"
+                            aria-invalid={!!errores.archivo}
+                            onChange={(e) => actualizar("archivo", e.target.files?.[0] ?? null)}
+                          />
+                          <FieldError>{errores.archivo}</FieldError>
+                        </Field>
+                      </div>
+                    </FieldSet>
+                  </>
+                ) : (
+                  <Alert variant="warning">
+                    <UserXIcon />
+                    <AlertDescription>
+                      La cita quedará como &quot;No asistió&quot; en el historial del paciente y cuenta para el
+                      indicador de ausentismo.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-              {errorApi ? (
-                <Alert variant="destructive">
-                  <CircleAlertIcon />
-                  <AlertDescription>{errorApi}</AlertDescription>
-                </Alert>
-              ) : null}
+                {errorApi ? (
+                  <Alert variant="destructive">
+                    <CircleAlertIcon />
+                    <AlertDescription>{errorApi}</AlertDescription>
+                  </Alert>
+                ) : null}
               </FieldGroup>
             )}
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            {idAtencionRegistrada ? (
-              <>
-                <Button type="button" variant="outline" size="lg" onClick={cerrar}>
-                  Cerrar
-                </Button>
-                <Button type="button" size="lg" onClick={onDescargarReceta} disabled={descargandoReceta}>
-                  {descargandoReceta ? (
-                    <Spinner data-icon="inline-start" />
-                  ) : (
-                    <FileDownIcon data-icon="inline-start" />
-                  )}
-                  {descargandoReceta ? "Descargando..." : "Descargar receta PDF"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button type="button" variant="outline" size="lg" onClick={cerrar} disabled={guardando}>
-                  Cancelar
-                </Button>
-                <Button type="submit" size="lg" disabled={guardando}>
-                  {guardando ? <Spinner data-icon="inline-start" /> : null}
-                  {asistio ? "Guardar atención" : "Registrar inasistencia"}
-                </Button>
-              </>
-            )}
-          </div>
+
+            <div className="mt-6 flex flex-col gap-2">
+              {idAtencionRegistrada ? (
+                <>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onDescargarConstancia}
+                      disabled={descargandoConstancia}
+                    >
+                      {descargandoConstancia ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <FileCheck2Icon data-icon="inline-start" />
+                      )}
+                      {descargandoConstancia ? "Generando..." : "Constancia PDF"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onDescargarCertificado}
+                      disabled={descargandoCertificado}
+                    >
+                      {descargandoCertificado ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <FileTextIcon data-icon="inline-start" />
+                      )}
+                      {descargandoCertificado ? "Generando..." : "Certificado PDF"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={onDescargarReceta}
+                      disabled={descargandoReceta}
+                    >
+                      {descargandoReceta ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <FileDownIcon data-icon="inline-start" />
+                      )}
+                      {descargandoReceta ? "Descargando..." : "Receta PDF"}
+                    </Button>
+                  </div>
+                  <Button type="button" variant="ghost" className="w-full" onClick={cerrar}>
+                    Cerrar ventana
+                  </Button>
+                </>
+              ) : (
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" size="lg" onClick={cerrar} disabled={guardando}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" size="lg" disabled={guardando}>
+                    {guardando ? <Spinner data-icon="inline-start" /> : null}
+                    {asistio ? "Guardar atención" : "Registrar inasistencia"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </form>
         </DialogContent>
       ) : null}

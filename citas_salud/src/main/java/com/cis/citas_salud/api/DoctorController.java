@@ -10,10 +10,14 @@ import com.cis.citas_salud.api.dto.DoctorDto.RegistrarAtencionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.SolicitudResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.DoctorService;
+import com.cis.citas_salud.service.RecetaMedicaService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,10 +27,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import com.cis.citas_salud.service.RecetaMedicaService;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.ContentDisposition;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -98,6 +98,7 @@ public class DoctorController {
                                             @RequestParam("archivo") MultipartFile archivo) {
         return doctorService.subirDocumento(sesion, idAtencion, tipoDocumento, archivo);
     }
+
     @GetMapping("/atenciones/{id}/receta")
     public ResponseEntity<byte[]> descargarReceta(
             UsuarioSesion sesion,
@@ -107,6 +108,46 @@ public class DoctorController {
 
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename("receta-" + idAtencion + ".pdf", StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(pdf);
+    }
+
+    // ==========================================
+    // REPORTE 1: CONSTANCIA DE ATENCIÓN
+    // ==========================================
+    @GetMapping("/atenciones/{id}/constancia")
+    public ResponseEntity<byte[]> descargarConstancia(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idAtencion) {
+
+        byte[] pdf = recetaMedicaService.generarConstanciaAtencion(sesion, idAtencion);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("constancia-" + idAtencion + ".pdf", StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(pdf);
+    }
+
+    // ==========================================
+    // REPORTE 2: CERTIFICADO MÉDICO
+    // ==========================================
+    @GetMapping("/atenciones/{id}/certificado")
+    public ResponseEntity<byte[]> descargarCertificado(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idAtencion) {
+
+        byte[] pdf = recetaMedicaService.generarCertificadoMedico(sesion, idAtencion);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("certificado-" + idAtencion + ".pdf", StandardCharsets.UTF_8)
                 .build();
 
         return ResponseEntity.ok()

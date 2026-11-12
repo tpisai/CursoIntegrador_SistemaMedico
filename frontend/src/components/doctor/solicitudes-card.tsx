@@ -42,7 +42,7 @@ export function SolicitudesCard() {
                 <InboxIcon />
               </EmptyMedia>
               <EmptyTitle>Aún no envías solicitudes</EmptyTitle>
-              <EmptyDescription>Desde el inicio del panel puedes pedir un cambio de fecha o derivar a un paciente.</EmptyDescription>
+              <EmptyDescription>Usa los formularios de arriba para pedir un cambio de fecha o derivar a un paciente.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (

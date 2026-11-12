@@ -54,11 +54,11 @@ export function TicketCitaDialog({
 
           <DialogHeader className="items-center text-center">
             <DialogTitle className="text-xl font-bold">
-              {ticket.recienReservada ? "¡Cita confirmada!" : "Ticket de atención"}
+              {ticket.recienReservada ? "¡Cita reservada!" : "Ticket de atención"}
             </DialogTitle>
             <DialogDescription>
               {ticket.recienReservada
-                ? "Tu cupo quedó bloqueado en tiempo real."
+                ? "Tu cupo quedó bloqueado. Confirma tu asistencia en Mis citas."
                 : "Presenta este número en recepción para validar tu cita."}
             </DialogDescription>
           </DialogHeader>

@@ -11,7 +11,8 @@
 #   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Actualizar  # agrega lo nuevo sin borrar datos
 #   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1 -Reiniciar   # borra y vuelve a crear la base
 #
-# La contraseña se lee de citas_salud/config/application.properties (archivo local ignorado por git).
+# La contraseña se lee de citas_salud/config/application.properties (archivo local ignorado por git) y, si
+# no existe, de citas_salud/src/main/resources/application.properties. El psql se detecta solo.
 
 param(
     [switch]$Reiniciar,
@@ -19,20 +20,33 @@ param(
     [string]$BaseDeDatos = "centro_salud",
     [string]$Usuario = "postgres",
     [string]$Servidor = "localhost",
-    [string]$Psql = "C:\Program Files\PostgreSQL\18\bin\psql.exe"
+    # Vacío = el PostgreSQL más reciente instalado en esta PC (17, 18...) o el psql del PATH.
+    [string]$Psql = ""
 )
 
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
-$configLocal = Join-Path $raiz "citas_salud\src\main\resources\application.properties"
+$configLocal = Join-Path $raiz "citas_salud\config\application.properties"
+$configRepo = Join-Path $raiz "citas_salud\src\main\resources\application.properties"
 
-if (-not (Test-Path $Psql)) { throw "No se encontró psql en '$Psql'. Pasa la ruta con -Psql." }
-if (-not (Test-Path $configLocal)) { throw "Falta $configLocal con la línea spring.datasource.password=..." }
+if (-not $Psql) {
+    $instalado = Get-ChildItem "C:\Program Files\PostgreSQL\*\bin\psql.exe" -ErrorAction SilentlyContinue |
+        Sort-Object { [int]($_.Directory.Parent.Name -replace '\D', '') } -Descending | Select-Object -First 1
+    $enPath = Get-Command psql -ErrorAction SilentlyContinue
+    $Psql = if ($instalado) { $instalado.FullName } elseif ($enPath) { $enPath.Source } else { "" }
+}
+if (-not $Psql -or -not (Test-Path $Psql)) { throw "No se encontró psql. Instala PostgreSQL o pasa la ruta con -Psql." }
 
-$linea = Get-Content $configLocal | Where-Object { $_ -match '^\s*spring\.datasource\.password\s*=' } | Select-Object -First 1
-$contrasena = if ($linea) { ($linea -split '=', 2)[1].Trim() } else { "" }
-if ($contrasena -eq "" -or $contrasena -eq "ESCRIBE_AQUI_TU_CONTRASENA") {
-    throw "Escribe tu contraseña de postgres en $configLocal y vuelve a ejecutar."
+# La contraseña propia de cada PC (config local) manda sobre la que viene en el repositorio.
+$contrasena = ""
+foreach ($config in $configLocal, $configRepo) {
+    if (-not (Test-Path $config)) { continue }
+    $linea = Get-Content $config | Where-Object { $_ -match '^\s*spring\.datasource\.password\s*=' } | Select-Object -First 1
+    $valor = if ($linea) { ($linea -split '=', 2)[1].Trim() } else { "" }
+    if ($valor -ne "" -and $valor -ne "ESCRIBE_AQUI_TU_CONTRASENA") { $contrasena = $valor; break }
+}
+if ($contrasena -eq "") {
+    throw "Escribe tu contraseña de postgres en $configLocal (línea spring.datasource.password=...) y vuelve a ejecutar."
 }
 
 $env:PGPASSWORD = $contrasena
@@ -49,6 +63,14 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo conectar a PostgreSQL. Revisa la co
 # Estos scripts se pueden repetir sobre una base con datos: -Actualizar solo ejecuta estos.
 $actualizaciones = "04_recuperacion_pin.sql", "05_profesionales_cmi.sql", "06_orden_examen.sql"
 $scripts = @("citas_salud.sql", "02_correlativo_ticket.sql", "03_datos_iniciales.sql") + $actualizaciones
+
+# Los scripts numerados desde el 06 se detectan solos: basta con dejar el archivo en esta carpeta.
+# Deben poder repetirse sobre una base con datos (CREATE TABLE IF NOT EXISTS, ON CONFLICT DO NOTHING...).
+$nuevos = @(Get-ChildItem $PSScriptRoot -Filter "*.sql" |
+    Where-Object { $_.Name -match '^(0[6-9]|[1-9]\d)_' -and $actualizaciones -notcontains $_.Name } |
+    Sort-Object Name | ForEach-Object { $_.Name })
+$actualizaciones = @($actualizaciones) + $nuevos
+$scripts = @($scripts) + $nuevos
 
 if ($existe -eq "1") {
     if ($Actualizar) {

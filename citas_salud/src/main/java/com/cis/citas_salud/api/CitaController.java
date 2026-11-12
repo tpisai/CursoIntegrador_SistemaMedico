@@ -55,6 +55,11 @@ public class CitaController {
         return citaService.cancelar(sesion, idCita);
     }
 
+    @PatchMapping("/citas/{id}/confirmar")
+    public CitaResponse confirmar(UsuarioSesion sesion, @PathVariable("id") Integer idCita) {
+        return citaService.confirmar(sesion, idCita);
+    }
+
     @GetMapping("/citas/{id}/ticket")
     public ResponseEntity<byte[]> ticket(UsuarioSesion sesion, @PathVariable("id") Integer idCita) {
         return descarga(citaService.ticket(sesion, idCita));

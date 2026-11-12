@@ -6,16 +6,8 @@ import com.cis.citas_salud.api.dto.CitaDto.CitaResponse;
 import com.cis.citas_salud.api.dto.CitaDto.DocumentoResponse;
 import com.cis.citas_salud.api.dto.CitaDto.ReservarCitaRequest;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
-import com.cis.citas_salud.entity.Cita;
-import com.cis.citas_salud.entity.DocumentoMedico;
-import com.cis.citas_salud.entity.Horario;
-import com.cis.citas_salud.entity.Notificacion;
-import com.cis.citas_salud.entity.Paciente;
-import com.cis.citas_salud.entity.Usuario;
-import com.cis.citas_salud.repository.CitaRepository;
-import com.cis.citas_salud.repository.DocumentoMedicoRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
-import com.cis.citas_salud.repository.PacienteRepository;
+import com.cis.citas_salud.entity.*;
+import com.cis.citas_salud.repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,16 +34,20 @@ public class CitaService {
     private final DocumentoMedicoRepository documentoRepository;
     private final NotificacionService notificacionService;
     private final Path carpetaArchivos;
+    private final AtencionRepository atencionRepository;
+    private final RecetaMedicaService recetaMedicaService;
 
     public CitaService(CitaRepository citaRepository, HorarioRepository horarioRepository,
                        PacienteRepository pacienteRepository, DocumentoMedicoRepository documentoRepository,
-                       NotificacionService notificacionService,
+                       NotificacionService notificacionService, AtencionRepository atencionRepository, RecetaMedicaService recetaMedicaService,
                        @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.citaRepository = citaRepository;
         this.horarioRepository = horarioRepository;
         this.pacienteRepository = pacienteRepository;
         this.documentoRepository = documentoRepository;
         this.notificacionService = notificacionService;
+        this.atencionRepository = atencionRepository;
+        this.recetaMedicaService = recetaMedicaService;
         this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
     }
 
@@ -197,6 +193,18 @@ public class CitaService {
         return new Archivo(doc.getNombreArchivo(), "application/pdf", pdf);
     }
 
+    @Transactional(readOnly = true)
+    public Archivo receta(UsuarioSesion sesion, Integer idCita) {
+        // Verificar que la cita pertenezca al paciente autenticado.
+        Cita cita = citaDelPaciente(sesion, idCita);
+        // Buscar la atención médica asociada a esa cita.
+        Atencion atencion = atencionRepository.findByCita_IdCita(cita.getIdCita())
+                .orElseThrow(() -> ApiException.noEncontrado(
+                                "Esta cita todavía no tiene una receta médica disponible."));
+        // Generar el PDF utilizando el mismo reporte JasperReports.
+        byte[] pdf = recetaMedicaService.generarRecetaPaciente(atencion);
+        return new Archivo("receta-" + idCita + ".pdf", "application/pdf", pdf);
+    }
     private static String valorOGuion(String valor) {
         return valor == null || valor.isBlank() ? "-" : valor;
     }

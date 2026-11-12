@@ -1,4 +1,4 @@
-import { request } from "./http"
+import { request, requestArchivo } from "./http"
 import type {
   AtencionRegistrada,
   CambioFechaRequest,
@@ -34,4 +34,7 @@ export function subirDocumento(idAtencion: number, tipoDocumento: string, archiv
   formulario.append("tipoDocumento", tipoDocumento)
   formulario.append("archivo", archivo)
   return request<DocumentoMedico>("POST", `/doctor/atenciones/${idAtencion}/documentos`, formulario)
+}
+export function descargarReceta(idAtencion: number) {
+  return requestArchivo(`/doctor/atenciones/${idAtencion}/receta`)
 }

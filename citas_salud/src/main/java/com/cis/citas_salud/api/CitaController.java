@@ -84,4 +84,11 @@ public class CitaController {
                         .filename(archivo.nombre(), StandardCharsets.UTF_8).build().toString())
                 .body(archivo.contenido());
     }
+    @GetMapping("/pacientes/me/citas/{id}/receta")
+    public ResponseEntity<byte[]> receta(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idCita) {
+
+        return descarga(citaService.receta(sesion, idCita));
+    }
 }

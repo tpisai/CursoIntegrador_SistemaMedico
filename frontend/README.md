@@ -31,6 +31,12 @@ El script ejecuta en orden `sql/citas_salud.sql` (tablas del equipo), `sql/02_co
 `sql/04_recuperacion_pin.sql` (códigos para recuperar el PIN) y `sql/05_profesionales_cmi.sql`
 (profesionales del centro de salud). Con `-Actualizar` solo ejecuta los dos últimos, que se pueden repetir.
 
+Los scripts numerados desde el 06 se detectan solos: basta con dejar el archivo en `sql/`. Hoy son
+`sql/07_receta_medicamentos.sql` (medicamentos de la receta) y `sql/08_consulta_medica.sql` (tipo de
+especialidad, antecedentes del paciente, resultados de exámenes y servicio de Laboratorio). **Cada vez que
+bajes cambios, ejecuta el instalador con `-Actualizar`**: si falta una tabla, el backend no arranca. El
+instalador usa el PostgreSQL que encuentre en la PC (17, 18...).
+
 Las fechas de los datos de prueba se calculan desde el día de la instalación. Si pasan semanas, las citas y
 campañas de ejemplo quedan en el pasado y los paneles se ven vacíos: `-Reiniciar` las renueva.
 
@@ -60,6 +66,7 @@ falta configurar CORS. Si el backend corre en otra dirección, define `BACKEND_U
 | -------------- | ---------- | -------- | ----------------------------------------- |
 | Paciente       | `12345678` | `123456` | Ana Quispe Rojas                          |
 | Doctor         | `87654321` | `654321` | Rodrigo Mendoza (Medicina General)        |
+| Laboratorio    | `87654343` | `654321` | Valeria Campos (reporta exámenes)         |
 | Administración | `44556677` | `445566` | Andrea Meza Cárdenas (Jefe de admisión)   |
 
 Los otros doctores (`87654322` a `87654326`) usan el PIN `654321`, y los otros pacientes el `123456`.
@@ -81,9 +88,9 @@ consultorio, así que no aparece en la reserva en línea.
 | `/paciente/citas`        | Mis citas activas (ver ticket, confirmar, cancelar)  | RF-07, RF-08         |
 | `/paciente/historial`    | Historial de atención y documentos                   | RF-09, RF-11         |
 | `/paciente/comunicacion` | 05 · Comunicación y Campañas: inscripción y comprobante | RF-19 a RF-21     |
-| `/doctor`                | 03 · Panel del Doctor, registrar atención            | RF-10, RF-14 a RF-16 |
-| `/doctor/agenda`         | Citas asignadas de cualquier día                     | RF-10, RF-14         |
-| `/doctor/solicitudes`    | Estado de cambios de fecha y derivaciones            | RF-15, RF-16         |
+| `/doctor/agenda`         | Agenda del doctor: hoy, 7 días o un rango de fechas  | RF-14                |
+| `/doctor/consulta/[idCita]` | Consulta: ficha o reporte de exámenes e historia clínica del paciente | RF-10, RF-11 |
+| `/doctor/solicitudes`    | Pedir cambio de fecha o derivación y seguir la respuesta | RF-15, RF-16     |
 | `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
 | `/admin/reportes`        | Reportes de control de citas y ausentismo            | EDT 4.8              |
@@ -127,6 +134,23 @@ y solo se puede reenviar una vez por minuto. Al cambiar el PIN también se desbl
 
 Para que el correo salga de verdad hay que configurar SMTP (ver arriba). Sin SMTP el código queda en el log del
 backend, en la línea `Código de recuperación de PIN para ...`, para poder probar el flujo.
+
+### Consulta del doctor (RF-10, RF-14)
+
+El doctor entra a **Agenda** (`/doctor` redirige ahí). Puede ver sus citas de hoy, de los próximos 7 días o de
+un rango que elige en el calendario (hasta 31 días). **Atender** abre `/doctor/consulta/[idCita]`:
+
+- **Paciente:** datos, alergias destacadas y antecedentes, que el doctor puede editar.
+- **Historia clínica:** atenciones anteriores de todo el centro con su receta, resultados de exámenes y
+  documentos descargables. El doctor solo ve la historia de pacientes con los que tiene o tuvo una cita.
+- **Atención según la especialidad** (`especialidad.tipo`):
+  - `CONSULTA`: ficha de consulta con síntomas, exploración física, diagnóstico, tratamiento, observaciones,
+    receta médica y documento adjunto.
+  - `APOYO_DIAGNOSTICO` (Laboratorio, Ecografía, Rayos X): reporte de exámenes con tipo de examen, resultado,
+    valor de referencia e interpretación, más una conclusión. No pide tratamiento.
+
+Una cita futura solo muestra la historia clínica; una ya atendida muestra lo registrado. Para probar el
+reporte de exámenes entra como Laboratorio (`87654343`): tiene una cita de hoy con Ana Quispe.
 
 ## Formularios de entrada de datos
 
@@ -175,7 +199,8 @@ src/
     ui/                 Componentes de shadcn/ui (se agregan con `npx shadcn@latest add`)
     auth/               Login, registro (paciente o doctor) y recuperación de PIN
     citas/              Reserva, calendario, horarios, mis citas, historial, ticket
-    doctor/             Agenda, registrar atención, cambio de fecha, derivación y solicitudes
+    doctor/             Agenda por rango de fechas, cambio de fecha, derivación y solicitudes
+    consulta/           Página de consulta: ficha, receta, reporte de exámenes e historia clínica
     admin/              Indicadores, responder solicitudes, crear horarios, campañas y reportes
     campanias/          Campañas vigentes, inscripción y comprobante del paciente
     portal/             Barra, notificaciones y estructura común de los portales
@@ -219,6 +244,11 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/citas?fecha=YYYY-MM-DD`                                    | Citas asignadas del día (por defecto hoy)               |
 | `GET`   | `/doctor/citas/proximas`                                            | Citas activas desde hoy                                 |
 | `GET`   | `/doctor/horarios-libres`                                           | Turnos libres propios (próximos 21 días)                |
+| `GET`   | `/doctor/agenda?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`                  | Citas del doctor en el rango (hasta 31 días). Sin fechas, las de hoy |
+| `GET`   | `/doctor/citas/{id}/consulta`                                       | Paciente, antecedentes, historia clínica y `modo` de atención de una cita propia |
+| `PATCH` | `/doctor/citas/{id}/antecedentes`                                   | `{ alergias, antecedentes, medicacionHabitual }` |
+| `POST`  | `/doctor/atenciones/{id}/resultados`                                | `{ resultados: [{ tipoExamen, resultado, valorReferencia?, interpretacion? }] }`. Solo apoyo al diagnóstico; 409 si ya tiene |
+| `GET`   | `/doctor/documentos/{id}/descarga`                                  | Documento de un paciente que el doctor atiende |
 | `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, idHorarioNuevo, motivo }`                    |
 | `POST`  | `/doctor/solicitudes/derivacion`                                    | `{ idCita, establecimiento, especialidad, motivo }`     |
 | `GET`   | `/doctor/solicitudes`                                               | Solicitudes enviadas por el doctor                      |

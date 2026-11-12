@@ -15,6 +15,7 @@ import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HorarioRepository;
+import com.cis.citas_salud.repository.OrdenExamenRepository;
 import com.cis.citas_salud.repository.PacienteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static com.cis.citas_salud.service.DatosPrueba.exigeError;
@@ -65,6 +67,10 @@ class CitaServiceTest {
     private AtencionRepository atencionRepository;
     @Mock
     private RecetaMedicaService recetaMedicaService;
+    @Mock
+    private OrdenExamenRepository ordenExamenRepository;
+    @Mock
+    private OrdenExamenService ordenExamenService;
 
     private CitaService servicio;
     private final UsuarioSesion sesion = new UsuarioSesion(10, UsuarioSesion.PACIENTE);
@@ -74,7 +80,8 @@ class CitaServiceTest {
     @BeforeEach
     void preparar() {
         servicio = new CitaService(citaRepository, horarioRepository, pacienteRepository, documentoRepository,
-                notificacionService, atencionRepository, recetaMedicaService, "archivos");
+                notificacionService, atencionRepository, recetaMedicaService, ordenExamenRepository,
+                ordenExamenService, "archivos");
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
     }
@@ -330,6 +337,55 @@ class CitaServiceTest {
         exigeError(HttpStatus.NOT_FOUND, () -> servicio.receta(sesion, 33));
 
         verifyNoInteractions(atencionRepository, recetaMedicaService);
+    }
+
+    // ----- Orden de exámenes -----
+
+    @Test
+    void ordenDeExamenesDeUnaCitaPropiaDevuelveElPdf() {
+        existeElPaciente();
+        citaDe(paciente, AYER, Cita.ATENDIDA);
+        CitaService.Archivo orden = new CitaService.Archivo("orden-examenes-7.pdf", "application/pdf",
+                new byte[] {37, 80, 68, 70});
+        when(ordenExamenService.generarPdfPaciente(sesion, 33)).thenReturn(orden);
+
+        assertSame(orden, servicio.ordenExamen(sesion, 33));
+    }
+
+    @Test
+    void ordenDeExamenesDeUnaCitaAjenaResponde404() {
+        existeElPaciente();
+        Usuario otraCuenta = DatosPrueba.usuario(99, UsuarioSesion.PACIENTE, "99999999");
+        citaDe(DatosPrueba.paciente(2, otraCuenta), AYER, Cita.ATENDIDA);
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.ordenExamen(sesion, 33));
+
+        verifyNoInteractions(ordenExamenService);
+    }
+
+    @Test
+    void elHistorialMarcaLasCitasQueTienenOrdenDeExamenes() {
+        existeElPaciente();
+        Cita conOrden = DatosPrueba.cita(33, paciente, DatosPrueba.horario(5, doctor, AYER), Cita.ATENDIDA);
+        Cita sinOrden = DatosPrueba.cita(34, paciente, DatosPrueba.horario(6, doctor, AYER), Cita.ATENDIDA);
+        when(citaRepository.historialDelPaciente(1, Cita.CERRADAS)).thenReturn(List.of(conOrden, sinOrden));
+        when(ordenExamenRepository.findCitasConOrden(List.of(33, 34))).thenReturn(List.of(33));
+
+        var historial = servicio.historial(sesion);
+
+        assertEquals(2, historial.size());
+        assertTrue(historial.get(0).tieneOrdenExamen());
+        assertEquals(false, historial.get(1).tieneOrdenExamen());
+    }
+
+    @Test
+    void elHistorialVacioNoConsultaLasOrdenes() {
+        existeElPaciente();
+        when(citaRepository.historialDelPaciente(1, Cita.CERRADAS)).thenReturn(List.of());
+
+        assertTrue(servicio.historial(sesion).isEmpty());
+
+        verifyNoInteractions(ordenExamenRepository);
     }
 
     // ----- Confirmar asistencia (EDT 4.12) -----

@@ -29,7 +29,7 @@ JOIN (
   UNION ALL
   SELECT a.id_atencion, 'Recomendaciones' AS seccion, 4 AS orden, 2::bigint AS sub, 'Indicaciones y observaciones' AS titulo, COALESCE(NULLIF(TRIM(a.observaciones), ''), 'Sin registro') AS detalle FROM atencion a
   UNION ALL
-  SELECT a.id_atencion, 'Derivación solicitada', 5, EXTRACT(EPOCH FROM s.fecha_solicitud)::bigint, 'Estado: ' || s.estado || ' (' || TO_CHAR(s.fecha_solicitud, 'DD/MM/YYYY') || ')', CONCAT_WS(' | ', 'Motivo: ' || s.motivo, 'Datos adicionales: ' || s.datos_adicionales, 'Respuesta: ' || s.respuesta_admin) FROM atencion a JOIN solicitud s ON s.id_cita = a.id_cita AND s.tipo = 'DERIVACION'
+  SELECT a.id_atencion, 'Derivación solicitada', 5, EXTRACT(EPOCH FROM s.fecha_solicitud)::bigint, 'Estado: ' || s.estado || ' (' || TO_CHAR(s.fecha_solicitud, 'DD/MM/YYYY') || ')', CONCAT_WS(' | ', 'Establecimiento destino: ' || (CASE WHEN s.datos_adicionales LIKE '{%' THEN s.datos_adicionales::jsonb ->> 'establecimiento' END), 'Especialidad requerida: ' || (CASE WHEN s.datos_adicionales LIKE '{%' THEN s.datos_adicionales::jsonb ->> 'especialidad' END), 'Motivo: ' || s.motivo, 'Respuesta de administración: ' || s.respuesta_admin) FROM atencion a JOIN solicitud s ON s.id_cita = a.id_cita AND s.tipo = 'DERIVACION'
   UNION ALL
   SELECT a.id_atencion, 'Derivación solicitada', 5, 0, 'Sin derivación', 'No hay solicitud de derivación registrada para esta atención.' FROM atencion a WHERE NOT EXISTS (SELECT 1 FROM solicitud s WHERE s.id_cita = a.id_cita AND s.tipo = 'DERIVACION')
 ) x ON x.id_atencion = a.id_atencion

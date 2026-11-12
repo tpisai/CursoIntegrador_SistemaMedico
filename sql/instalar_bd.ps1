@@ -4,6 +4,7 @@
 #   3. 03_datos_iniciales.sql  (catálogos y datos de demostración)
 #   4. 04_recuperacion_pin.sql (tabla de códigos para recuperar el PIN)
 #   5. 05_profesionales_cmi.sql (profesionales del cartel del centro de salud)
+#   6. 06_orden_examen.sql (órdenes de exámenes médicos)
 #
 # Uso (desde la carpeta del proyecto):
 #   powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1
@@ -46,7 +47,7 @@ $existe = & $Psql -h $Servidor -U $Usuario -d postgres -tAc "SELECT 1 FROM pg_da
 if ($LASTEXITCODE -ne 0) { throw "No se pudo conectar a PostgreSQL. Revisa la contraseña." }
 
 # Estos scripts se pueden repetir sobre una base con datos: -Actualizar solo ejecuta estos.
-$actualizaciones = "04_recuperacion_pin.sql", "05_profesionales_cmi.sql"
+$actualizaciones = "04_recuperacion_pin.sql", "05_profesionales_cmi.sql", "06_orden_examen.sql"
 $scripts = @("citas_salud.sql", "02_correlativo_ticket.sql", "03_datos_iniciales.sql") + $actualizaciones
 
 if ($existe -eq "1") {

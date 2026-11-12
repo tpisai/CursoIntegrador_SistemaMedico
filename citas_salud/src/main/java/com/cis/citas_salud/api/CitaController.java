@@ -7,6 +7,7 @@ import com.cis.citas_salud.api.dto.CitaDto.ReservarCitaRequest;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.CitaService;
 import com.cis.citas_salud.service.CitaService.Archivo;
+import com.cis.citas_salud.service.HistorialClinicoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -31,9 +32,11 @@ import java.util.List;
 public class CitaController {
 
     private final CitaService citaService;
+    private final HistorialClinicoService historialClinicoService;
 
-    public CitaController(CitaService citaService) {
+    public CitaController(CitaService citaService, HistorialClinicoService historialClinicoService) {
         this.citaService = citaService;
+        this.historialClinicoService = historialClinicoService;
     }
 
     @PostMapping("/citas")
@@ -62,6 +65,11 @@ public class CitaController {
         return citaService.historial(sesion);
     }
 
+    @GetMapping("/pacientes/me/historial/pdf")
+    public ResponseEntity<byte[]> historialPdf(UsuarioSesion sesion) {
+        return descarga(historialClinicoService.generarPdf(sesion));
+    }
+
     @GetMapping("/pacientes/me/documentos")
     public List<DocumentoResponse> documentos(UsuarioSesion sesion) {
         return citaService.documentos(sesion);
@@ -85,5 +93,12 @@ public class CitaController {
             @PathVariable("id") Integer idCita) {
 
         return descarga(citaService.receta(sesion, idCita));
+    }
+
+    @GetMapping("/pacientes/me/citas/{id}/orden-examenes")
+    public ResponseEntity<byte[]> ordenExamen(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idCita) {
+        return descarga(citaService.ordenExamen(sesion, idCita));
     }
 }

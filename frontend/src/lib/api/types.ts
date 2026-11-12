@@ -111,6 +111,7 @@ export interface AtencionHistorial {
   especialidad: string
   doctor: string
   estado: Extract<EstadoCita, "ATENDIDA" | "NO_ASISTIO">
+  tieneOrdenExamen: boolean
 }
 
 export interface DocumentoMedico {
@@ -193,6 +194,8 @@ export interface RegistrarAtencionRequest {
   diagnostico?: string
   tratamiento?: string
   observaciones?: string
+  examenesRequeridos?: string
+  motivoClinico?: string
   medicamentos?: MedicamentoRequest[]
 }
 

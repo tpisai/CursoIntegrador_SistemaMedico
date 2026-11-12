@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.cis.citas_salud.service.RecetaMedicaService;
+import com.cis.citas_salud.service.OrdenExamenService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.ContentDisposition;
@@ -39,10 +40,13 @@ public class DoctorController {
 
     private final DoctorService doctorService;
     private final RecetaMedicaService recetaMedicaService;
+    private final OrdenExamenService ordenExamenService;
 
-    public DoctorController(DoctorService doctorService, RecetaMedicaService recetaMedicaService) {
+    public DoctorController(DoctorService doctorService, RecetaMedicaService recetaMedicaService,
+                            OrdenExamenService ordenExamenService) {
         this.doctorService = doctorService;
         this.recetaMedicaService = recetaMedicaService;
+        this.ordenExamenService = ordenExamenService;
     }
 
     @GetMapping("/citas")
@@ -113,5 +117,12 @@ public class DoctorController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(pdf);
+    }
+
+    @GetMapping("/atenciones/{id}/orden-examenes")
+    public ResponseEntity<byte[]> descargarOrdenExamen(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idAtencion) {
+        return CitaController.descarga(ordenExamenService.generarPdfDoctor(sesion, idAtencion));
     }
 }

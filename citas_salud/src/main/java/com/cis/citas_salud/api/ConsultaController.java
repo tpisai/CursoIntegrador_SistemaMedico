@@ -8,6 +8,8 @@ import com.cis.citas_salud.api.dto.ConsultaDto.ResultadoExamenResponse;
 import com.cis.citas_salud.api.dto.DoctorDto.CitaAsignadaResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.ConsultaService;
+import com.cis.citas_salud.service.ReporteClinicoService;
+import com.cis.citas_salud.service.ReporteClinicoService.Documento;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -31,9 +33,11 @@ import java.util.List;
 public class ConsultaController {
 
     private final ConsultaService consultaService;
+    private final ReporteClinicoService reporteClinicoService;
 
-    public ConsultaController(ConsultaService consultaService) {
+    public ConsultaController(ConsultaService consultaService, ReporteClinicoService reporteClinicoService) {
         this.consultaService = consultaService;
+        this.reporteClinicoService = reporteClinicoService;
     }
 
     @GetMapping("/agenda")
@@ -65,5 +69,27 @@ public class ConsultaController {
     @GetMapping("/documentos/{id}/descarga")
     public ResponseEntity<byte[]> documento(UsuarioSesion sesion, @PathVariable("id") Integer idDocumento) {
         return CitaController.descarga(consultaService.documento(sesion, idDocumento));
+    }
+
+    // ----- Documentos clínicos en PDF (plantillas con consulta SQL) -----
+
+    @GetMapping("/atenciones/{id}/ficha-consulta")
+    public ResponseEntity<byte[]> fichaConsulta(UsuarioSesion sesion, @PathVariable("id") Integer idAtencion) {
+        return CitaController.descarga(reporteClinicoService.deAtencion(sesion, idAtencion, Documento.FICHA_CONSULTA));
+    }
+
+    @GetMapping("/atenciones/{id}/informe-medico")
+    public ResponseEntity<byte[]> informeMedico(UsuarioSesion sesion, @PathVariable("id") Integer idAtencion) {
+        return CitaController.descarga(reporteClinicoService.deAtencion(sesion, idAtencion, Documento.INFORME_MEDICO));
+    }
+
+    @GetMapping("/atenciones/{id}/referencia")
+    public ResponseEntity<byte[]> referencia(UsuarioSesion sesion, @PathVariable("id") Integer idAtencion) {
+        return CitaController.descarga(reporteClinicoService.deAtencion(sesion, idAtencion, Documento.REFERENCIA));
+    }
+
+    @GetMapping("/citas/{id}/fichas-consulta")
+    public ResponseEntity<byte[]> fichasDelPaciente(UsuarioSesion sesion, @PathVariable("id") Integer idCita) {
+        return CitaController.descarga(reporteClinicoService.fichasDelPaciente(sesion, idCita));
     }
 }

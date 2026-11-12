@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { descargarDocumentoDePaciente } from "@/lib/api/consulta"
+import { type DocumentoClinico, descargarDocumentoClinico, descargarDocumentoDePaciente } from "@/lib/api/consulta"
 import { descargarReceta } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import type { AtencionPrevia, MedicamentoRecetado } from "@/lib/api/types"
@@ -36,10 +36,21 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
   )
 }
 
+const DOCUMENTOS_CLINICOS: { documento: DocumentoClinico; etiqueta: string }[] = [
+  { documento: "ficha-consulta", etiqueta: "Ficha de consulta" },
+  { documento: "informe-medico", etiqueta: "Informe médico" },
+  { documento: "referencia", etiqueta: "Referencia" },
+]
+
 /** Lo que se registró en una atención: ficha o conclusión, receta, resultados de exámenes y documentos. */
 export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
   const [descargando, setDescargando] = useState<string | null>(null)
   const esExamen = atencion.tipoEspecialidad === "APOYO_DIAGNOSTICO"
+  // El doctor emite los documentos de sus propias consultas; la referencia, solo si pidió una derivación.
+  const documentosClinicos =
+    atencion.propia && !esExamen
+      ? DOCUMENTOS_CLINICOS.filter((d) => d.documento !== "referencia" || atencion.tieneDerivacion)
+      : []
 
   async function descargar(clave: string, obtener: () => Promise<Blob>, nombre: string) {
     setDescargando(clave)
@@ -115,6 +126,33 @@ export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
               Descargar receta (PDF)
             </Button>
           ) : null}
+        </div>
+      ) : null}
+
+      {documentosClinicos.length ? (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Documentos para imprimir</h4>
+          <div className="flex flex-wrap gap-2">
+            {documentosClinicos.map(({ documento, etiqueta }) => (
+              <Button
+                key={documento}
+                variant="outline"
+                className="h-11"
+                disabled={descargando === documento}
+                onClick={() =>
+                  descargar(
+                    documento,
+                    () => descargarDocumentoClinico(atencion.idAtencion, documento),
+                    `${documento}-${atencion.idAtencion}.pdf`
+                  )
+                }
+              >
+                {descargando === documento ? <Spinner data-icon="inline-start" /> : <DownloadIcon data-icon="inline-start" />}
+                {etiqueta}
+                <span className="sr-only"> en PDF</span>
+              </Button>
+            ))}
+          </div>
         </div>
       ) : null}
 

@@ -22,3 +22,15 @@ export function registrarResultados(idAtencion: number, resultados: ResultadoExa
 export function descargarDocumentoDePaciente(idDocumento: number) {
   return requestArchivo(`/doctor/documentos/${idDocumento}/descarga`)
 }
+
+/** Documentos clínicos en PDF de una atención propia. La referencia exige una solicitud de derivación. */
+export type DocumentoClinico = "ficha-consulta" | "informe-medico" | "referencia"
+
+export function descargarDocumentoClinico(idAtencion: number, documento: DocumentoClinico) {
+  return requestArchivo(`/doctor/atenciones/${idAtencion}/${documento}`)
+}
+
+/** Todas las fichas de consulta del paciente de una cita del doctor, en un solo PDF. */
+export function descargarFichasDelPaciente(idCita: number) {
+  return requestArchivo(`/doctor/citas/${idCita}/fichas-consulta`)
+}

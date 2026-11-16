@@ -8,11 +8,34 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /** Panel de administración y recepción (pantalla 04 del prototipo). */
 public final class AdminDto {
 
     private AdminDto() {
+    }
+
+    // Reporte de control (EDT 4.8).
+    public record FilaReporte(
+            String nombre,
+            // Especialidad del doctor; vacío en las demás filas.
+            String detalle,
+            long total,
+            long atendidas,
+            long noAsistio,
+            long canceladas,
+            long pendientes,
+            // % de citas cerradas a las que el paciente no asistió.
+            int ausentismo) {
+    }
+
+    public record ReporteResponse(
+            String desde,
+            String hasta,
+            FilaReporte totales,
+            List<FilaReporte> porEspecialidad,
+            List<FilaReporte> porDoctor) {
     }
 
     public record ResumenResponse(

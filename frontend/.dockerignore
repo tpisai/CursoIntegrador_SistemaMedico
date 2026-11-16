@@ -1,0 +1,13 @@
+# Contexto de build del frontend. Los .env* locales no deben influir en la imagen.
+node_modules/
+.next/
+out/
+coverage/
+.env*
+*.tsbuildinfo
+next-env.d.ts
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore

@@ -19,6 +19,10 @@ export function reservarCita(datos: ReservarCitaRequest) {
   return request<Cita>("POST", "/citas", datos)
 }
 
+export function confirmarAsistencia(idCita: number) {
+  return request<Cita>("PATCH", `/citas/${idCita}/confirmar`)
+}
+
 export function cancelarCita(idCita: number) {
   return request<Cita>("PATCH", `/citas/${idCita}/cancelar`)
 }
@@ -41,4 +45,12 @@ export function descargarConstanciaPaciente(idCita: number) {
 
 export function descargarCertificadoPaciente(idCita: number) {
   return requestArchivo(`/pacientes/me/citas/${idCita}/certificado`)
+}
+
+export function descargarOrdenExamen(idCita: number) {
+  return requestArchivo(`/pacientes/me/citas/${idCita}/orden-examenes`)
+}
+
+export function descargarHistorialClinico() {
+  return requestArchivo("/pacientes/me/historial/pdf")
 }

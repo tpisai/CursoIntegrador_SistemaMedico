@@ -1,0 +1,108 @@
+# Sistema SaludGrau para producción. Los pasos están en docs/DESPLIEGUE.md.
+# Necesita un archivo .env en esta carpeta (cópialo de .env.example).
+name: saludgrau
+
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    # La hora de Lima, para que CURRENT_DATE y los datos iniciales usen el día correcto.
+    command: ["postgres", "-c", "timezone=America/Lima", "-c", "log_timezone=America/Lima"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-centro_salud}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    volumes:
+      - postgres_datos:/var/lib/postgresql/data
+      - ./sql:/sql-inicial:ro
+      - ./sql/docker_primera_carga.sh:/docker-entrypoint-initdb.d/00_primera_carga.sh:ro
+    healthcheck:
+      # Por TCP a propósito: durante la primera carga Postgres solo escucha en su socket interno,
+      # así que sin -h daría "sano" antes de terminar de cargar los datos.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging: *logs
+
+  backend:
+    build: ./citas_salud
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # El SMTP llega desde .env. No se declara abajo con ${...:-} porque quedaría definido y vacío,
+    # y Spring Boot crearía un servidor de correo sin dirección en vez de solo registrar en el log.
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-centro_salud}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      SALUDGRAU_TOKEN_SECRETO: ${SALUDGRAU_TOKEN_SECRETO:?Define SALUDGRAU_TOKEN_SECRETO en .env}
+    volumes:
+      - archivos:/app/archivos
+    healthcheck:
+      # Ruta pública que además consulta la base.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/api/especialidades"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    logging: *logs
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # Solo en 127.0.0.1: los puertos publicados por Docker se saltan el firewall ufw, y al
+      # público se entra por Caddy con HTTPS.
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logs
+
+  caddy:
+    image: caddy:2
+    profiles: ["ssl"]
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+    environment:
+      DOMINIO: ${DOMINIO:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_datos:/data
+      - caddy_config:/config
+    logging: *logs
+
+volumes:
+  postgres_datos:
+  archivos:
+  caddy_datos:
+  caddy_config:

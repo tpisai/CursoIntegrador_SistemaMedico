@@ -32,10 +32,10 @@ import type { Usuario } from "@/lib/api/types"
 import { cerrarSesion } from "@/lib/auth/acciones"
 import { iniciales } from "@/lib/format"
 
-export type EnlacePortal = { href: string; texto: string; exacto?: boolean }
+export type EnlacePortal = { href: string; texto: string; exacto?: boolean; prefijos?: string[] }
 
-function esActivo(pathname: string, { href, exacto }: EnlacePortal) {
-  return exacto ? pathname === href : pathname.startsWith(href)
+function esActivo(pathname: string, { href, exacto, prefijos = [] }: EnlacePortal) {
+  return exacto ? pathname === href : [href, ...prefijos].some((prefijo) => pathname.startsWith(prefijo))
 }
 
 export function PortalNavbar({

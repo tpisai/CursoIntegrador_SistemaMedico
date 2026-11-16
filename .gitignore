@@ -1,0 +1,7 @@
+# Variables de producción con contraseñas: nunca al repositorio.
+.env
+.env.*
+!.env.example
+
+# Respaldos de la base: contienen datos de pacientes.
+respaldos/

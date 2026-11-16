@@ -6,6 +6,10 @@ import jakarta.persistence.*;
 @Table(name = "especialidad")
 public class Especialidad {
 
+    public static final String CONSULTA = "CONSULTA";
+    /** Laboratorio, ecografía y rayos X: no hacen consulta médica, reportan resultados de exámenes. */
+    public static final String APOYO_DIAGNOSTICO = "APOYO_DIAGNOSTICO";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_especialidad")
@@ -19,6 +23,9 @@ public class Especialidad {
 
     @Column(name = "estado", nullable = false)
     private String estado = "ACTIVO";
+
+    @Column(name = "tipo", nullable = false)
+    private String tipo = CONSULTA;
 
     public Especialidad() {
     }
@@ -57,5 +64,17 @@ public class Especialidad {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public boolean esApoyoDiagnostico() {
+        return APOYO_DIAGNOSTICO.equals(tipo);
     }
 }

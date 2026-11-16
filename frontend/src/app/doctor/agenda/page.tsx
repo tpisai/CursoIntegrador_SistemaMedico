@@ -1,19 +1,20 @@
 import type { Metadata } from "next"
 
-import { AgendaDelDia } from "@/components/doctor/agenda-del-dia"
+import { AgendaDoctor } from "@/components/doctor/agenda-doctor"
 import { Encabezado } from "@/components/portal/encabezado"
 
 export const metadata: Metadata = {
-  title: "Mi agenda",
+  title: "Agenda",
 }
 
 export default function AgendaDoctorPage() {
   return (
     <>
-      <Encabezado titulo="Mi agenda" descripcion="Revisa las citas asignadas de cualquier día." />
-      <div className="max-w-4xl">
-        <AgendaDelDia navegable />
-      </div>
+      <Encabezado
+        titulo="Agenda"
+        descripcion="Atiende a tus pacientes de hoy y revisa las citas de los días que elijas."
+      />
+      <AgendaDoctor />
     </>
   )
 }

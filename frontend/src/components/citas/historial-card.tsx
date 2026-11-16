@@ -16,6 +16,8 @@ import {
   descargarCertificadoPaciente,
   descargarConstanciaPaciente,
   descargarDocumento,
+  descargarHistorialClinico as descargarHistorialClinicoApi,
+  descargarOrdenExamen as descargarOrdenExamenApi,
   descargarReceta as descargarRecetaApi,
 } from "@/lib/api/citas"
 import { mensajeDeError } from "@/lib/api/http"
@@ -47,6 +49,18 @@ export function HistorialCard() {
   const historial = useHistorial()
   const documentos = useDocumentos()
   const [descargando, setDescargando] = useState<string | null>(null)
+  const [descargandoHistorial, setDescargandoHistorial] = useState(false)
+
+  async function descargarHistorialClinico() {
+    setDescargandoHistorial(true)
+    try {
+      guardarArchivo(await descargarHistorialClinicoApi(), "historial-clinico.pdf")
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoHistorial(false)
+    }
+  }
 
   async function descargar(doc: DocumentoMedico) {
     const clave = `doc-${doc.idDocumento}`
@@ -81,10 +95,38 @@ export function HistorialCard() {
     }
   }
 
+  async function descargarOrdenExamen(idCita: number) {
+    const clave = `orden-${idCita}`
+    setDescargando(clave)
+    try {
+      guardarArchivo(await descargarOrdenExamenApi(idCita), `orden-examenes-${idCita}.pdf`)
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargando(null)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-semibold">Historial de atención</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="font-semibold">Historial de atención</CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={descargandoHistorial}
+            onClick={descargarHistorialClinico}
+          >
+            {descargandoHistorial ? (
+              <Spinner className="mr-2 h-4 w-4" />
+            ) : (
+              <DownloadIcon className="mr-2 h-4 w-4" />
+            )}
+            Descargar historial PDF
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {historial.isLoading ? (
@@ -140,6 +182,22 @@ export function HistorialCard() {
                       )}
                       Receta PDF
                     </Button>
+                    {atencion.tieneOrdenExamen ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={descargando === `orden-${atencion.idCita}`}
+                        onClick={() => descargarOrdenExamen(atencion.idCita)}
+                      >
+                        {descargando === `orden-${atencion.idCita}` ? (
+                          <Spinner className="mr-1.5 h-3.5 w-3.5" />
+                        ) : (
+                          <DownloadIcon className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Descargar orden de exámenes
+                      </Button>
+                    ) : null}
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-3 py-2.5 text-sm">

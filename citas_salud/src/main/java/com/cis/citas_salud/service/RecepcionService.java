@@ -84,9 +84,11 @@ public class RecepcionService {
         return m.matches() ? Formato.ticket(Long.parseLong(m.group(1))) : limpio;
     }
 
+    /** Solo cuenta la validación del día de la cita: una cita reprogramada se valida de nuevo. */
     private Optional<Auditoria> validacion(Cita cita) {
         return auditoriaRepository.findFirstByAccionAndEntidadAndIdRegistroAndResultadoOrderByFechaDesc(
-                Auditoria.VALIDAR_TICKET, Auditoria.ENTIDAD_CITA, cita.getIdCita(), Auditoria.EXITOSO);
+                        Auditoria.VALIDAR_TICKET, Auditoria.ENTIDAD_CITA, cita.getIdCita(), Auditoria.EXITOSO)
+                .filter(a -> a.getFecha().toLocalDate().equals(cita.getHorario().getFecha()));
     }
 
     private static ResultadoTicket resultado(Cita cita, Optional<Auditoria> previa) {

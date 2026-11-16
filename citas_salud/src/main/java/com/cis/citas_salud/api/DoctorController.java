@@ -10,6 +10,7 @@ import com.cis.citas_salud.api.dto.DoctorDto.RegistrarAtencionRequest;
 import com.cis.citas_salud.api.dto.DoctorDto.SolicitudResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.DoctorService;
+import com.cis.citas_salud.service.OrdenExamenService;
 import com.cis.citas_salud.service.RecetaMedicaService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -39,10 +40,13 @@ public class DoctorController {
 
     private final DoctorService doctorService;
     private final RecetaMedicaService recetaMedicaService;
+    private final OrdenExamenService ordenExamenService;
 
-    public DoctorController(DoctorService doctorService, RecetaMedicaService recetaMedicaService) {
+    public DoctorController(DoctorService doctorService, RecetaMedicaService recetaMedicaService,
+                            OrdenExamenService ordenExamenService) {
         this.doctorService = doctorService;
         this.recetaMedicaService = recetaMedicaService;
+        this.ordenExamenService = ordenExamenService;
     }
 
     @GetMapping("/citas")
@@ -154,5 +158,12 @@ public class DoctorController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(pdf);
+    }
+
+    @GetMapping("/atenciones/{id}/orden-examenes")
+    public ResponseEntity<byte[]> descargarOrdenExamen(
+            UsuarioSesion sesion,
+            @PathVariable("id") Integer idAtencion) {
+        return CitaController.descarga(ordenExamenService.generarPdfDoctor(sesion, idAtencion));
     }
 }

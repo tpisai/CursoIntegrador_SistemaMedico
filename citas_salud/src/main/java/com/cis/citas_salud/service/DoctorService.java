@@ -68,12 +68,14 @@ public class DoctorService {
     private final ObjectMapper objectMapper;
     private final Path carpetaArchivos;
     private final DetalleMedicamentoRepository detalleMedicamentoRepository;
+    private final OrdenExamenService ordenExamenService;
 
     public DoctorService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                          HorarioRepository horarioRepository, SolicitudRepository solicitudRepository,
                          UsuarioRepository usuarioRepository, AtencionRepository atencionRepository,
                          HistoriaClinicaRepository historiaRepository, DocumentoMedicoRepository documentoRepository,
                          DetalleMedicamentoRepository detalleMedicamentoRepository, NotificacionService notificacionService, ObjectMapper objectMapper,
+                         OrdenExamenService ordenExamenService,
                          @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
@@ -84,6 +86,7 @@ public class DoctorService {
         this.historiaRepository = historiaRepository;
         this.documentoRepository = documentoRepository;
         this.detalleMedicamentoRepository = detalleMedicamentoRepository;
+        this.ordenExamenService = ordenExamenService;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
         this.carpetaArchivos = Path.of(carpetaArchivos).toAbsolutePath().normalize();
@@ -180,8 +183,12 @@ public class DoctorService {
 
         String diagnostico = textoOpcional(datos.diagnostico());
         String tratamiento = textoOpcional(datos.tratamiento());
-        if (diagnostico == null) throw ApiException.datosInvalidos("Escribe el diagnóstico.");
-        if (tratamiento == null) throw ApiException.datosInvalidos("Escribe el tratamiento indicado.");
+        // Laboratorio, ecografía y rayos X registran la conclusión del examen y no indican tratamiento.
+        boolean apoyoDiagnostico = doctor.getEspecialidad().esApoyoDiagnostico();
+        if (diagnostico == null) {
+            throw ApiException.datosInvalidos(apoyoDiagnostico ? "Escribe la conclusión del examen." : "Escribe el diagnóstico.");
+        }
+        if (tratamiento == null && !apoyoDiagnostico) throw ApiException.datosInvalidos("Escribe el tratamiento indicado.");
 
         Atencion atencion = new Atencion();
         atencion.setHistoria(historiaRepository.findByPaciente_IdPaciente(cita.getPaciente().getIdPaciente())
@@ -195,6 +202,11 @@ public class DoctorService {
         atencion.setTratamiento(tratamiento);
         atencion.setObservaciones(textoOpcional(datos.observaciones()));
         atencionRepository.save(atencion);
+        if (datos.examenesRequeridos() != null && !datos.examenesRequeridos().isBlank()) {
+            ordenExamenService.crear(atencion, datos.examenesRequeridos(), datos.motivoClinico());
+        } else if (datos.motivoClinico() != null && !datos.motivoClinico().isBlank()) {
+            throw ApiException.datosInvalidos("Agrega los exámenes requeridos para emitir la orden.");
+        }
         // Registrar los medicamentos prescritos
         if (datos.medicamentos() != null && !datos.medicamentos().isEmpty()) {
             List<DetalleMedicamento> medicamentos = new java.util.ArrayList<>();
@@ -236,7 +248,7 @@ public class DoctorService {
             throw ApiException.datosInvalidos("Elige el tipo de documento.");
         }
         if (archivo == null || archivo.isEmpty()) throw ApiException.datosInvalidos("Adjunta un archivo.");
-        if (!TIPOS_ARCHIVO.contains(archivo.getContentType())) {
+        if (archivo.getContentType() == null || !TIPOS_ARCHIVO.contains(archivo.getContentType())) {
             throw ApiException.datosInvalidos("Solo se aceptan archivos PDF, JPG o PNG.");
         }
 
@@ -266,7 +278,8 @@ public class DoctorService {
 
     /** Deja solo letras, números, punto, guion y guion bajo (evita rutas como "../"). */
     private static String nombreSeguro(String original) {
-        String base = original == null ? "documento" : Path.of(original).getFileName().toString();
+        String base = original == null ? "documento"
+                : original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
         String limpio = base.replaceAll("[^A-Za-z0-9._-]", "_");
         if (limpio.isBlank() || limpio.startsWith(".")) limpio = "documento" + limpio;
         return limpio.length() > 100 ? limpio.substring(limpio.length() - 100) : limpio;
@@ -314,7 +327,7 @@ public class DoctorService {
                 .orElseThrow(() -> ApiException.prohibido("Tu cuenta no tiene un perfil de doctor."));
     }
 
-    private static CitaAsignadaResponse respuesta(Cita c) {
+    static CitaAsignadaResponse respuesta(Cita c) {
         Horario h = c.getHorario();
         return new CitaAsignadaResponse(
                 c.getIdCita(),

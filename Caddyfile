@@ -1,0 +1,5 @@
+# Proxy con HTTPS. Caddy pide y renueva solo el certificado de Let's Encrypt para este dominio.
+{$DOMINIO} {
+	encode gzip
+	reverse_proxy frontend:3000
+}

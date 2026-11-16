@@ -9,3 +9,5 @@ Version 0: Primer Commit de Git y configuracion del Git pull para seguridad y co
 
 Los pasos para crear la base, arrancar el backend y el frontend, y las cuentas de prueba están en
 [frontend/README.md](frontend/README.md).
+
+Para publicar el sistema en un servidor y programar los respaldos, sigue [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).

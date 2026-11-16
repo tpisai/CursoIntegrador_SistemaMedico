@@ -1,6 +1,7 @@
 package com.cis.citas_salud.api.seguridad;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -24,9 +25,18 @@ public class TokenService {
     private static final Base64.Encoder B64 = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder B64_DECODER = Base64.getUrlDecoder();
 
+    private static final String SECRETO_DESARROLLO = "saludgrau-clave-de-desarrollo-cambiar-en-produccion";
+    private static final int LARGO_MINIMO_PRODUCCION = 32;
+
     private final SecretKeySpec clave;
 
-    public TokenService(@Value("${saludgrau.token.secreto:saludgrau-clave-de-desarrollo-cambiar-en-produccion}") String secreto) {
+    public TokenService(@Value("${saludgrau.token.secreto:" + SECRETO_DESARROLLO + "}") String secreto,
+                        Environment entorno) {
+        if (entorno.matchesProfiles("prod")
+                && (secreto.equals(SECRETO_DESARROLLO) || secreto.length() < LARGO_MINIMO_PRODUCCION)) {
+            throw new IllegalStateException("SALUDGRAU_TOKEN_SECRETO debe ser una clave propia de al menos "
+                    + LARGO_MINIMO_PRODUCCION + " caracteres. Genérala con: openssl rand -hex 32");
+        }
         this.clave = new SecretKeySpec(secreto.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }
 

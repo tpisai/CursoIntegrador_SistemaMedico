@@ -97,6 +97,8 @@ class DoctorServiceTest {
     private DetalleMedicamentoRepository detalleMedicamentoRepository;
     @Mock
     private NotificacionService notificacionService;
+    @Mock
+    private OrdenExamenService ordenExamenService;
     @Captor
     private ArgumentCaptor<List<DetalleMedicamento>> medicamentosGuardados;
 
@@ -114,7 +116,7 @@ class DoctorServiceTest {
         servicio = new DoctorService(doctorRepository, citaRepository, horarioRepository, solicitudRepository,
                 usuarioRepository, atencionRepository, historiaRepository, documentoRepository,
                 detalleMedicamentoRepository, notificacionService, JsonMapper.builder().build(),
-                carpetaArchivos.toString());
+                ordenExamenService, carpetaArchivos.toString());
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         historia = new HistoriaClinica();
@@ -148,11 +150,16 @@ class DoctorServiceTest {
     private static RegistrarAtencionRequest atendidoConReceta(String diagnostico, String tratamiento,
                                                               List<MedicamentoRequest> medicamentos) {
         return new RegistrarAtencionRequest(true, " Dolor de garganta ", "  ", diagnostico, tratamiento, null,
-                medicamentos);
+                null, null, medicamentos);
+    }
+
+    private static RegistrarAtencionRequest atendidoConOrden(String examenes, String motivoClinico) {
+        return new RegistrarAtencionRequest(true, null, null, "Anemia en estudio", "Dieta rica en hierro", null,
+                examenes, motivoClinico, null);
     }
 
     private static RegistrarAtencionRequest noAsistio() {
-        return new RegistrarAtencionRequest(false, null, null, null, null, null, null);
+        return new RegistrarAtencionRequest(false, null, null, null, null, null, null, null, null);
     }
 
     // ----- Registrar la atención -----
@@ -188,7 +195,7 @@ class DoctorServiceTest {
         assertNull(atencion.getExamenFisico());
         verify(notificacionService).crear(eq(paciente.getUsuario()), eq(Notificacion.CITA),
                 eq("Atención registrada"), anyString());
-        verifyNoInteractions(detalleMedicamentoRepository);
+        verifyNoInteractions(detalleMedicamentoRepository, ordenExamenService);
     }
 
     @Test
@@ -316,6 +323,48 @@ class DoctorServiceTest {
                 () -> servicio.registrarAtencion(sesion, ID_CITA, atendido("Faringitis", null)));
 
         assertEquals("Escribe el tratamiento indicado.", error.getMessage());
+    }
+
+    @Test
+    void atencionConExamenesEmiteLaOrdenSobreLaAtencionGuardada() {
+        existeElDoctor();
+        Cita cita = citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+        when(historiaRepository.findByPaciente_IdPaciente(1)).thenReturn(Optional.of(historia));
+
+        servicio.registrarAtencion(sesion, ID_CITA, atendidoConOrden("Hemograma\nFerritina", "Descartar anemia"));
+
+        ArgumentCaptor<Atencion> guardada = ArgumentCaptor.forClass(Atencion.class);
+        verify(atencionRepository).save(guardada.capture());
+        verify(ordenExamenService).crear(guardada.getValue(), "Hemograma\nFerritina", "Descartar anemia");
+        assertEquals(Cita.ATENDIDA, cita.getEstado());
+    }
+
+    @Test
+    void motivoClinicoSinExamenesResponde400() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+        when(historiaRepository.findByPaciente_IdPaciente(1)).thenReturn(Optional.of(historia));
+
+        ApiException error = exigeError(HttpStatus.BAD_REQUEST,
+                () -> servicio.registrarAtencion(sesion, ID_CITA, atendidoConOrden("  ", "Descartar anemia")));
+
+        assertEquals("Agrega los exámenes requeridos para emitir la orden.", error.getMessage());
+        verifyNoInteractions(ordenExamenService, notificacionService);
+    }
+
+    @Test
+    void laInasistenciaNoEmiteOrdenDeExamenes() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        sinAtencionPrevia();
+
+        servicio.registrarAtencion(sesion, ID_CITA,
+                new RegistrarAtencionRequest(false, null, null, null, null, null, "Hemograma", "Control", null));
+
+        verifyNoInteractions(ordenExamenService);
+        verify(atencionRepository, never()).save(any());
     }
 
     @Test

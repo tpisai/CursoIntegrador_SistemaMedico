@@ -61,8 +61,10 @@ public final class ConsultaDto {
             // CONSULTA o APOYO_DIAGNOSTICO
             String tipoEspecialidad,
             String doctor,
-            // La registró el doctor que consulta: solo él descarga su receta.
+            // La registró el doctor que consulta: solo él descarga su receta y sus documentos clínicos.
             boolean propia,
+            // La cita tiene una solicitud de derivación: se puede emitir la referencia.
+            boolean tieneDerivacion,
             String anamnesis,
             String examenFisico,
             String diagnostico,

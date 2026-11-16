@@ -413,8 +413,10 @@ export interface AtencionPrevia {
   especialidad: string
   tipoEspecialidad: TipoEspecialidad
   doctor: string
-  // La registró el doctor que consulta: solo él descarga su receta.
+  // La registró el doctor que consulta: solo él descarga su receta y sus documentos clínicos.
   propia: boolean
+  // La cita tiene una solicitud de derivación: se puede emitir la referencia.
+  tieneDerivacion: boolean
   anamnesis: string | null
   examenFisico: string | null
   diagnostico: string | null

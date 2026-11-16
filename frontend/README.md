@@ -158,6 +158,22 @@ un rango que elige en el calendario (hasta 31 días). **Atender** abre `/doctor/
 Una cita futura solo muestra la historia clínica; una ya atendida muestra lo registrado. Para probar el
 reporte de exámenes entra como Laboratorio (`87654343`): tiene una cita de hoy con Ana Quispe.
 
+#### Documentos clínicos en PDF
+
+En una atención propia el doctor descarga la **ficha de consulta**, el **informe médico** y, si pidió una
+derivación, la **referencia**. En **Atenciones anteriores**, **Fichas en PDF** reúne todas las fichas del paciente.
+
+Las cuatro plantillas (`FichaConsultaMedica`, `InformeMedico`, `InformeMedicoDerivacion` y
+`FichaConsultaPaciente`, en `citas_salud/src/main/resources/reports`) traen su propia consulta SQL.
+`GeneradorReportesSql` las llena con una conexión de la aplicación, así que no hay que configurar nada aparte.
+
+Para agregar otra plantilla con SQL:
+
+1. Guárdala en formato **JasperReports 7** (Jaspersoft Studio 7.0.x). Las de la versión 6 no abren:
+   `Unable to load report`.
+2. Usa parámetros para los filtros (`$P{ID_ATENCION}`) y déjala en `src/main/resources/reports`.
+3. Agrégala a `PlantillasClinicasTest`: la prueba la compila y avisa si el formato o el diseño no son válidos.
+
 ## Formularios de entrada de datos
 
 Cada formulario valida en el navegador y otra vez en la API, y guarda en PostgreSQL:
@@ -264,6 +280,10 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/tipos-documento`                                           | Tipos de documento médico                               |
 | `POST`  | `/doctor/atenciones/{id}/documentos`                                | Multipart `tipoDocumento` + `archivo` (PDF, JPG o PNG, hasta 5 MB) |
 | `GET`   | `/doctor/atenciones/{id}/orden-examenes`                            | PDF de la orden emitida por el doctor autenticado          |
+| `GET`   | `/doctor/atenciones/{id}/ficha-consulta`                            | PDF de la ficha de consulta de una atención propia         |
+| `GET`   | `/doctor/atenciones/{id}/informe-medico`                            | PDF del informe médico de una atención propia              |
+| `GET`   | `/doctor/atenciones/{id}/referencia`                                | PDF de la referencia a otro establecimiento. 409 si la cita no tiene solicitud de derivación |
+| `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
 | `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |

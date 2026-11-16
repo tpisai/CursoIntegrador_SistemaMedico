@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plantilla de Rodrigo Ojeda (informe_medico.jrxml), convertida al formato de JasperReports 7. -->
+<!-- La consulta SQL se ejecuta con la conexión de la aplicación: ver ReporteClinicoService. -->
+<jasperReport name="InformeMedico" language="java" pageWidth="595" pageHeight="842"
+              columnWidth="535" leftMargin="30" rightMargin="30" topMargin="30" bottomMargin="30"
+              whenNoDataType="AllSectionsNoDetail">
+    <parameter name="ID_ATENCION" class="java.lang.Integer"/>
+    <query language="sql"><![CDATA[SELECT a.id_atencion, pa.id_paciente, CONCAT(pu.nombres, ' ', pu.apellidos) AS paciente, pu.dni, pa.fecha_nacimiento, pa.sexo, pa.grupo_sanguineo, hc.numero_historia, CONCAT(du.nombres, ' ', du.apellidos) AS doctor, d.cmp, e.nombre AS especialidad, c.numero_ticket, a.fecha_atencion, a.estado, x.seccion, x.orden, x.sub, x.titulo, x.detalle
+FROM atencion a
+JOIN historia_clinica hc ON hc.id_historia = a.id_historia
+JOIN paciente pa ON pa.id_paciente = hc.id_paciente
+JOIN usuario pu ON pu.id_usuario = pa.id_usuario
+JOIN doctor d ON d.id_doctor = a.id_doctor
+JOIN usuario du ON du.id_usuario = d.id_usuario
+JOIN especialidad e ON e.id_especialidad = d.id_especialidad
+JOIN cita c ON c.id_cita = a.id_cita
+JOIN (
+  SELECT a.id_atencion, 'Evaluación médica' AS seccion, 1 AS orden, 1::bigint AS sub, 'Motivo de la cita' AS titulo, COALESCE(NULLIF(TRIM(c2.motivo), ''), 'Sin registro') AS detalle FROM atencion a JOIN cita c2 ON c2.id_cita = a.id_cita
+  UNION ALL
+  SELECT a.id_atencion, 'Evaluación médica' AS seccion, 1 AS orden, 2::bigint AS sub, 'Signos vitales (triaje del ' || TO_CHAR(t.fecha_triaje, 'DD/MM/YYYY HH24:MI') || ')' AS titulo, CONCAT_WS(' | ', 'Peso: ' || t.peso || ' kg', 'Talla: ' || t.talla || ' cm', 'Presión arterial: ' || t.presion_arterial, 'FC: ' || t.frecuencia_cardiaca || ' lpm', 'Temperatura: ' || t.temperatura || ' °C', 'SatO2: ' || t.saturacion_oxigeno || ' %', 'Obs: ' || t.observaciones) AS detalle FROM atencion a JOIN LATERAL (SELECT * FROM triaje t2 WHERE t2.id_historia = a.id_historia AND t2.fecha_triaje <= a.fecha_atencion ORDER BY t2.fecha_triaje DESC LIMIT 1) t ON TRUE
+  UNION ALL
+  SELECT a.id_atencion, 'Evaluación médica' AS seccion, 1 AS orden, 3::bigint AS sub, 'Anamnesis' AS titulo, COALESCE(NULLIF(TRIM(a.anamnesis), ''), 'Sin registro') AS detalle FROM atencion a
+  UNION ALL
+  SELECT a.id_atencion, 'Evaluación médica' AS seccion, 1 AS orden, 4::bigint AS sub, 'Examen físico' AS titulo, COALESCE(NULLIF(TRIM(a.examen_fisico), ''), 'Sin registro') AS detalle FROM atencion a
+  UNION ALL
+  SELECT a.id_atencion, 'Diagnóstico' AS seccion, 2 AS orden, 0::bigint AS sub, NULL::text AS titulo, COALESCE(NULLIF(TRIM(a.diagnostico), ''), 'Sin registro') AS detalle FROM atencion a
+  UNION ALL
+  SELECT a.id_atencion, 'Evolución del paciente', 3, EXTRACT(EPOCH FROM p.fecha_atencion)::bigint, TO_CHAR(p.fecha_atencion, 'DD/MM/YYYY'), CONCAT_WS(' | ', 'Diagnóstico: ' || NULLIF(TRIM(p.diagnostico), ''), 'Tratamiento: ' || NULLIF(TRIM(p.tratamiento), ''), 'Obs: ' || NULLIF(TRIM(p.observaciones), '')) FROM atencion a JOIN atencion p ON p.id_historia = a.id_historia AND p.fecha_atencion < a.fecha_atencion
+  UNION ALL
+  SELECT a.id_atencion, 'Evolución del paciente', 3, 0, 'Sin atenciones previas', 'Esta es la primera atención registrada en la historia clínica del paciente.' FROM atencion a WHERE NOT EXISTS (SELECT 1 FROM atencion p WHERE p.id_historia = a.id_historia AND p.fecha_atencion < a.fecha_atencion)
+  UNION ALL
+  SELECT a.id_atencion, 'Recomendaciones' AS seccion, 4 AS orden, 1::bigint AS sub, 'Tratamiento indicado' AS titulo, COALESCE(NULLIF(TRIM(a.tratamiento), ''), 'Sin registro') AS detalle FROM atencion a
+  UNION ALL
+  SELECT a.id_atencion, 'Recomendaciones' AS seccion, 4 AS orden, 2::bigint AS sub, 'Indicaciones y observaciones' AS titulo, COALESCE(NULLIF(TRIM(a.observaciones), ''), 'Sin registro') AS detalle FROM atencion a
+  UNION ALL
+  SELECT a.id_atencion, 'Recomendaciones', 4, COALESCE(dm.orden, 1) + 10, dm.nombre_medicamento, CONCAT_WS(' | ', 'Dosis: ' || dm.dosis, 'Cantidad: ' || dm.cantidad, 'Vía: ' || dm.via_administracion, 'Presentación: ' || dm.presentacion, 'Unidades por toma: ' || dm.unidades_por_toma, 'Frecuencia: ' || dm.frecuencia, 'Duración: ' || dm.duracion) FROM atencion a JOIN detalle_medicamento dm ON dm.id_atencion = a.id_atencion
+  UNION ALL
+  SELECT a.id_atencion, 'Recomendaciones', 4, 10 + 1, 'Sin medicamentos registrados', 'No se recetaron medicamentos en esta atención.' FROM atencion a WHERE NOT EXISTS (SELECT 1 FROM detalle_medicamento dm WHERE dm.id_atencion = a.id_atencion)
+) x ON x.id_atencion = a.id_atencion
+WHERE a.id_atencion = $P{ID_ATENCION}
+ORDER BY x.orden, x.sub, x.titulo]]></query>
+    <field name="id_atencion" class="java.lang.Integer"/>
+    <field name="id_paciente" class="java.lang.Integer"/>
+    <field name="paciente" class="java.lang.String"/>
+    <field name="dni" class="java.lang.String"/>
+    <field name="fecha_nacimiento" class="java.sql.Date"/>
+    <field name="sexo" class="java.lang.String"/>
+    <field name="grupo_sanguineo" class="java.lang.String"/>
+    <field name="numero_historia" class="java.lang.String"/>
+    <field name="doctor" class="java.lang.String"/>
+    <field name="cmp" class="java.lang.String"/>
+    <field name="especialidad" class="java.lang.String"/>
+    <field name="numero_ticket" class="java.lang.String"/>
+    <field name="fecha_atencion" class="java.sql.Timestamp"/>
+    <field name="estado" class="java.lang.String"/>
+    <field name="seccion" class="java.lang.String"/>
+    <field name="orden" class="java.lang.Integer"/>
+    <field name="sub" class="java.lang.Long"/>
+    <field name="titulo" class="java.lang.String"/>
+    <field name="detalle" class="java.lang.String"/>
+    <group name="grpAtencion">
+        <expression><![CDATA[$F{id_atencion}]]></expression>
+        <groupHeader>
+            <band height="136">
+                <element kind="textField" x="0" y="0" width="535" height="18" fontSize="11.0" bold="true" blankWhenNull="true">
+                    <expression><![CDATA["Paciente: " + $F{paciente}]]></expression>
+                </element>
+                <element kind="textField" x="0" y="20" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["DNI: " + $F{dni}]]></expression>
+                </element>
+                <element kind="textField" x="270" y="20" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Fecha de nacimiento: " + ($F{fecha_nacimiento} == null ? "-" : new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{fecha_nacimiento}))]]></expression>
+                </element>
+                <element kind="textField" x="0" y="38" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Sexo: " + ($F{sexo} == null ? "-" : $F{sexo})]]></expression>
+                </element>
+                <element kind="textField" x="270" y="38" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Grupo sanguíneo: " + ($F{grupo_sanguineo} == null ? "-" : $F{grupo_sanguineo})]]></expression>
+                </element>
+                <element kind="textField" x="0" y="56" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["N.º historia clínica: " + $F{numero_historia}]]></expression>
+                </element>
+                <element kind="line" x="0" y="76" width="535" height="1" forecolor="#999999"/>
+                <element kind="textField" x="0" y="84" width="265" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                    <expression><![CDATA["Doctor(a): " + $F{doctor}]]></expression>
+                </element>
+                <element kind="textField" x="270" y="84" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["CMP: " + $F{cmp}]]></expression>
+                </element>
+                <element kind="textField" x="0" y="102" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Especialidad: " + $F{especialidad}]]></expression>
+                </element>
+                <element kind="textField" x="270" y="102" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Fecha de atención: " + ($F{fecha_atencion} == null ? "-" : new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format($F{fecha_atencion}))]]></expression>
+                </element>
+                <element kind="textField" x="0" y="120" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["N.º de ticket: " + $F{numero_ticket}]]></expression>
+                </element>
+                <element kind="textField" x="270" y="120" width="265" height="16" fontSize="9.0" blankWhenNull="true">
+                    <expression><![CDATA["Estado: " + $F{estado}]]></expression>
+                </element>
+            </band>
+        </groupHeader>
+    </group>
+    <group name="grpSeccion" minHeightToStartNewPage="50">
+        <expression><![CDATA[$F{seccion}]]></expression>
+        <groupHeader>
+            <band height="30">
+                <element kind="textField" mode="Opaque" x="0" y="6" width="535" height="20" forecolor="#FFFFFF" backcolor="#1F4E79" fontSize="11.0" bold="true" vTextAlign="Middle">
+                    <paragraph leftIndent="6"/>
+                    <expression><![CDATA[$F{seccion}]]></expression>
+                </element>
+            </band>
+        </groupHeader>
+        <groupFooter>
+            <band height="4"/>
+        </groupFooter>
+    </group>
+    <title height="60">
+        <element kind="staticText" x="0" y="0" width="535" height="16" fontSize="9.0" hTextAlign="Center">
+            <text><![CDATA[CENTRO DE SALUD MIGUEL GRAU]]></text>
+        </element>
+        <element kind="staticText" x="0" y="18" width="535" height="30" fontSize="18.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Informe Médico]]></text>
+        </element>
+    </title>
+    <detail>
+        <band height="20" splitType="Stretch">
+            <element kind="textField" x="0" y="2" width="535" height="16" fontSize="10.0" textAdjust="StretchHeight" blankWhenNull="true">
+                <paragraph leftIndent="6" rightIndent="4"/>
+                <expression><![CDATA[($F{titulo} == null || $F{titulo}.trim().isEmpty()) ? ($F{detalle} == null ? "" : $F{detalle}) : $F{titulo} + ($F{detalle} == null || $F{detalle}.isEmpty() ? "" : ": " + $F{detalle})]]></expression>
+            </element>
+            <element kind="line" x="0" y="19" width="535" height="1" forecolor="#DDDDDD" positionType="FixRelativeToBottom"/>
+        </band>
+    </detail>
+    <pageFooter height="22">
+        <element kind="textField" x="335" y="4" width="100" height="14" fontSize="8.0" hTextAlign="Right">
+            <expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de"]]></expression>
+        </element>
+        <element kind="textField" x="438" y="4" width="40" height="14" fontSize="8.0" evaluationTime="Report">
+            <expression><![CDATA[$V{PAGE_NUMBER}]]></expression>
+        </element>
+    </pageFooter>
+    <summary height="90">
+        <element kind="line" x="300" y="60" width="235" height="1"/>
+        <element kind="textField" x="300" y="63" width="235" height="14" fontSize="9.0" bold="true" hTextAlign="Center" blankWhenNull="true">
+            <expression><![CDATA[$F{doctor}]]></expression>
+        </element>
+        <element kind="textField" x="300" y="77" width="235" height="12" fontSize="8.0" hTextAlign="Center" blankWhenNull="true">
+            <expression><![CDATA["Firma y sello - CMP " + $F{cmp}]]></expression>
+        </element>
+    </summary>
+</jasperReport>

@@ -188,7 +188,13 @@ export function ConsultaDoctor({ idCita }: { idCita: number }) {
           ) : null}
           <Atencion consulta={consulta} idCita={idCita} />
         </section>
-        <HistoriaClinica idCita={idCita} paciente={consulta.paciente} previas={previas} onCambio={() => recargar()} />
+        <HistoriaClinica
+          idCita={idCita}
+          paciente={consulta.paciente}
+          previas={previas}
+          conAtenciones={consulta.historial.length > 0}
+          onCambio={() => recargar()}
+        />
       </div>
     </>
   )

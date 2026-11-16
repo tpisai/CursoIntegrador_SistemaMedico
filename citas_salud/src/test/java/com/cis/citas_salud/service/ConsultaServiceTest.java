@@ -27,6 +27,7 @@ import com.cis.citas_salud.repository.DoctorRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HistoriaClinicaRepository;
 import com.cis.citas_salud.repository.HistorialClinicoRepository;
+import com.cis.citas_salud.repository.ReporteClinicoRepository;
 import com.cis.citas_salud.repository.ResultadoExamenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,6 +82,8 @@ class ConsultaServiceTest {
     @Mock
     private ResultadoExamenRepository resultadoRepository;
     @Mock
+    private ReporteClinicoRepository reporteRepository;
+    @Mock
     private NotificacionService notificacionService;
     @Mock
     private CitaService citaService;
@@ -97,7 +100,8 @@ class ConsultaServiceTest {
     @BeforeEach
     void preparar() {
         servicio = new ConsultaService(doctorRepository, citaRepository, historiaRepository, historialRepository,
-                atencionRepository, documentoRepository, resultadoRepository, notificacionService, citaService);
+                atencionRepository, documentoRepository, resultadoRepository, reporteRepository, notificacionService,
+                citaService);
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
         laboratorio = DatosPrueba.doctor(4, DatosPrueba.usuario(21, UsuarioSesion.DOCTOR, "87654343"));
         laboratorio.getEspecialidad().setNombre("Laboratorio");
@@ -217,6 +221,7 @@ class ConsultaServiceTest {
         receta.setTipoDocumento("Receta médica");
         receta.setNombreArchivo("receta.pdf");
         when(documentoRepository.delPaciente(1)).thenReturn(List.of(receta));
+        when(reporteRepository.conDerivacion(List.of(91, 90))).thenReturn(List.of(90));
 
         ConsultaResponse consulta = servicio.consulta(sesion, ID_CITA);
 
@@ -234,10 +239,12 @@ class ConsultaServiceTest {
         assertEquals("Laboratorio", examen.especialidad());
         assertEquals(Especialidad.APOYO_DIAGNOSTICO, examen.tipoEspecialidad());
         assertFalse(examen.propia());
+        assertFalse(examen.tieneDerivacion());
         assertEquals("Hemoglobina", examen.resultados().get(0).tipoExamen());
         assertEquals(List.of(), examen.medicamentos());
         AtencionPreviaResponse consultaPrevia = consulta.historial().get(1);
         assertTrue(consultaPrevia.propia());
+        assertTrue(consultaPrevia.tieneDerivacion());
         assertEquals("Amoxicilina 500 mg", consultaPrevia.medicamentos().get(0).nombreMedicamento());
         assertEquals(12, consultaPrevia.documentos().get(0).idDocumento());
         assertEquals(List.of(), consultaPrevia.resultados());

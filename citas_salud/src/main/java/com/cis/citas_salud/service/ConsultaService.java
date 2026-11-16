@@ -29,6 +29,7 @@ import com.cis.citas_salud.repository.DoctorRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HistoriaClinicaRepository;
 import com.cis.citas_salud.repository.HistorialClinicoRepository;
+import com.cis.citas_salud.repository.ReporteClinicoRepository;
 import com.cis.citas_salud.repository.ResultadoExamenRepository;
 import com.cis.citas_salud.service.CitaService.Archivo;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -62,14 +64,15 @@ public class ConsultaService {
     private final AtencionRepository atencionRepository;
     private final DocumentoMedicoRepository documentoRepository;
     private final ResultadoExamenRepository resultadoRepository;
+    private final ReporteClinicoRepository reporteRepository;
     private final NotificacionService notificacionService;
     private final CitaService citaService;
 
     public ConsultaService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                            HistoriaClinicaRepository historiaRepository, HistorialClinicoRepository historialRepository,
                            AtencionRepository atencionRepository, DocumentoMedicoRepository documentoRepository,
-                           ResultadoExamenRepository resultadoRepository, NotificacionService notificacionService,
-                           CitaService citaService) {
+                           ResultadoExamenRepository resultadoRepository, ReporteClinicoRepository reporteRepository,
+                           NotificacionService notificacionService, CitaService citaService) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
         this.historiaRepository = historiaRepository;
@@ -77,6 +80,7 @@ public class ConsultaService {
         this.atencionRepository = atencionRepository;
         this.documentoRepository = documentoRepository;
         this.resultadoRepository = resultadoRepository;
+        this.reporteRepository = reporteRepository;
         this.notificacionService = notificacionService;
         this.citaService = citaService;
     }
@@ -188,6 +192,7 @@ public class ConsultaService {
         Map<Integer, List<DocumentoResponse>> documentos = documentoRepository.delPaciente(paciente.getIdPaciente()).stream()
                 .collect(Collectors.groupingBy(d -> d.getAtencion().getIdAtencion(),
                         Collectors.mapping(ConsultaService::respuesta, Collectors.toList())));
+        Set<Integer> conDerivacion = Set.copyOf(reporteRepository.conDerivacion(ids));
 
         return atenciones.stream()
                 .map(a -> new AtencionPreviaResponse(
@@ -198,6 +203,7 @@ public class ConsultaService {
                         a.getDoctor().getEspecialidad().getTipo(),
                         a.getDoctor().getUsuario().getNombreCorto(),
                         a.getDoctor().getIdDoctor().equals(doctor.getIdDoctor()),
+                        conDerivacion.contains(a.getIdAtencion()),
                         a.getAnamnesis(),
                         a.getExamenFisico(),
                         a.getDiagnostico(),

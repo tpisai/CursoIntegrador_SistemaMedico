@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { CalendarCheckIcon, CircleAlertIcon, StethoscopeIcon } from "lucide-react"
+import { CalendarCheckIcon, CircleAlertIcon, FileTextIcon, StethoscopeIcon } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { EstadoCitaBadge } from "@/components/citas/estado-cita-badge"
 import { type Rango, SelectorRango } from "@/components/doctor/selector-rango"
 import { useAgenda } from "@/hooks/use-consulta"
-import { mensajeDeError } from "@/lib/api/http"
+import { mensajeDeError, requestArchivo } from "@/lib/api/http"
 import type { CitaAsignada } from "@/lib/api/types"
 import { formatFechaLarga, formatRango, parseFecha, toFechaISO } from "@/lib/format"
 
@@ -57,7 +57,24 @@ function Accion({ cita, hoy }: { cita: CitaAsignada; hoy: string }) {
 export function AgendaDoctor() {
   const [hoy] = useState(() => toFechaISO(new Date()))
   const [rango, setRango] = useState<Rango>({ desde: hoy, hasta: hoy })
+  const [descargandoLab, setDescargandoLab] = useState(false)
   const { data: citas, error, isLoading } = useAgenda(rango.desde, rango.hasta)
+
+  const handleDescargarInformeLaboratorio = async () => {
+    try {
+      setDescargandoLab(true)
+      const [anioStr, mesStr] = rango.desde.split("-")
+      const anio = Number(anioStr)
+      const mes = Number(mesStr)
+      const blob = await requestArchivo(`/doctor/informes/laboratorio?anio=${anio}&mes=${mes}`)
+      const url = window.URL.createObjectURL(blob)
+      window.open(url, "_blank")
+    } catch (err) {
+      alert(mensajeDeError(err))
+    } finally {
+      setDescargandoLab(false)
+    }
+  }
 
   const semana = sumarDias(hoy, 6)
   const atajo =
@@ -107,7 +124,19 @@ export function AgendaDoctor() {
               Próximos 7 días
             </ToggleGroupItem>
           </ToggleGroup>
-          <SelectorRango rango={rango} onCambio={setRango} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11"
+              disabled={descargandoLab}
+              onClick={handleDescargarInformeLaboratorio}
+            >
+              <FileTextIcon className="mr-2 size-4" />
+              {descargandoLab ? "Generando informe..." : "Informe Laboratorio PDF"}
+            </Button>
+            <SelectorRango rango={rango} onCambio={setRango} />
+          </div>
         </div>
 
         {isLoading && !citas ? (

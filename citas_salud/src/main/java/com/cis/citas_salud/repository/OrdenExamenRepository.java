@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +31,6 @@ public interface OrdenExamenRepository extends JpaRepository<OrdenExamen, Intege
             "atencion.doctor.especialidad"
     })
     Optional<OrdenExamen> findByAtencion_Cita_IdCita(Integer idCita);
+
+    List<OrdenExamen> findByAtencion_Cita_Horario_FechaBetween(LocalDate inicio, LocalDate fin);
 }

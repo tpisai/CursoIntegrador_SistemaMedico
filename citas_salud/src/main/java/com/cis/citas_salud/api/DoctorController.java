@@ -160,6 +160,31 @@ public class DoctorController {
                 .body(pdf);
     }
 
+    // ==========================================
+    // REPORTE 3: INFORME MENSUAL DE LABORATORIO
+    // ==========================================
+    @GetMapping("/informes/laboratorio")
+    public ResponseEntity<byte[]> descargarInformeLaboratorio(
+            UsuarioSesion sesion,
+            @RequestParam(value = "anio", required = false) Integer anio,
+            @RequestParam(value = "mes", required = false) Integer mes) {
+
+        LocalDate hoy = LocalDate.now();
+        int a = anio != null ? anio : hoy.getYear();
+        int m = mes != null ? mes : hoy.getMonthValue();
+
+        byte[] pdf = recetaMedicaService.generarInformeLaboratorio(sesion, a, m);
+
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("informe-laboratorio-" + a + "-" + m + ".pdf", StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(pdf);
+    }
+
     @GetMapping("/atenciones/{id}/orden-examenes")
     public ResponseEntity<byte[]> descargarOrdenExamen(
             UsuarioSesion sesion,

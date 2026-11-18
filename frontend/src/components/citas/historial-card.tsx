@@ -13,6 +13,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { EstadoCitaBadge } from "@/components/citas/estado-cita-badge"
 import { useDocumentos, useHistorial } from "@/hooks/use-citas"
 import {
+  descargarCertificadoPaciente,
+  descargarConstanciaPaciente,
   descargarDocumento,
   descargarHistorialClinico as descargarHistorialClinicoApi,
   descargarOrdenExamen as descargarOrdenExamenApi,
@@ -42,12 +44,11 @@ function ErrorCarga({ error }: { error: unknown }) {
   )
 }
 
-
 // RF-09 (historial de asistencias) y RF-11 (descarga de documentos).
 export function HistorialCard() {
   const historial = useHistorial()
   const documentos = useDocumentos()
-  const [descargando, setDescargando] = useState<number | null>(null)
+  const [descargando, setDescargando] = useState<string | null>(null)
   const [descargandoHistorial, setDescargandoHistorial] = useState(false)
 
   async function descargarHistorialClinico() {
@@ -62,7 +63,8 @@ export function HistorialCard() {
   }
 
   async function descargar(doc: DocumentoMedico) {
-    setDescargando(doc.idDocumento)
+    const clave = `doc-${doc.idDocumento}`
+    setDescargando(clave)
     try {
       guardarArchivo(await descargarDocumento(doc.idDocumento), doc.nombreArchivo)
     } catch (error) {
@@ -72,12 +74,20 @@ export function HistorialCard() {
     }
   }
 
-  async function descargarReceta(idCita: number) {
-    setDescargando(idCita)
-
+  async function descargarReporteCita(
+    idCita: number,
+    tipo: "receta" | "constancia" | "certificado"
+  ) {
+    const clave = `${tipo}-${idCita}`
+    setDescargando(clave)
     try {
-      const archivo = await descargarRecetaApi(idCita)
-      guardarArchivo(archivo, `receta-${idCita}.pdf`)
+      const archivo =
+        tipo === "receta"
+          ? await descargarRecetaApi(idCita)
+          : tipo === "constancia"
+          ? await descargarConstanciaPaciente(idCita)
+          : await descargarCertificadoPaciente(idCita)
+      guardarArchivo(archivo, `${tipo}-${idCita}.pdf`)
     } catch (error) {
       toast.error(mensajeDeError(error))
     } finally {
@@ -86,7 +96,8 @@ export function HistorialCard() {
   }
 
   async function descargarOrdenExamen(idCita: number) {
-    setDescargando(idCita)
+    const clave = `orden-${idCita}`
+    setDescargando(clave)
     try {
       guardarArchivo(await descargarOrdenExamenApi(idCita), `orden-examenes-${idCita}.pdf`)
     } catch (error) {
@@ -128,33 +139,61 @@ export function HistorialCard() {
               <li key={atencion.idCita} className="flex flex-col">
                 {i > 0 ? <Separator /> : null}
                 {atencion.estado === "ATENDIDA" && (
-                  <div className="flex flex-wrap justify-end gap-2 pb-3">
+                  <div className="flex flex-wrap justify-end gap-2 pt-3 pb-1">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={descargando === atencion.idCita}
-                      onClick={() => descargarReceta(atencion.idCita)}
+                      disabled={descargando === `constancia-${atencion.idCita}`}
+                      onClick={() => descargarReporteCita(atencion.idCita, "constancia")}
                     >
-                      {descargando === atencion.idCita ? (
-                        <Spinner className="mr-2 h-4 w-4" />
+                      {descargando === `constancia-${atencion.idCita}` ? (
+                        <Spinner className="mr-1.5 h-3.5 w-3.5" />
                       ) : (
-                        <DownloadIcon className="mr-2 h-4 w-4" />
+                        <DownloadIcon className="mr-1.5 h-3.5 w-3.5" />
                       )}
-                      Descargar receta PDF
+                      Constancia PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={descargando === `certificado-${atencion.idCita}`}
+                      onClick={() => descargarReporteCita(atencion.idCita, "certificado")}
+                    >
+                      {descargando === `certificado-${atencion.idCita}` ? (
+                        <Spinner className="mr-1.5 h-3.5 w-3.5" />
+                      ) : (
+                        <DownloadIcon className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Certificado PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      disabled={descargando === `receta-${atencion.idCita}`}
+                      onClick={() => descargarReporteCita(atencion.idCita, "receta")}
+                    >
+                      {descargando === `receta-${atencion.idCita}` ? (
+                        <Spinner className="mr-1.5 h-3.5 w-3.5" />
+                      ) : (
+                        <DownloadIcon className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      Receta PDF
                     </Button>
                     {atencion.tieneOrdenExamen ? (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={descargando === atencion.idCita}
+                        disabled={descargando === `orden-${atencion.idCita}`}
                         onClick={() => descargarOrdenExamen(atencion.idCita)}
                       >
-                        {descargando === atencion.idCita ? (
-                          <Spinner className="mr-2 h-4 w-4" />
+                        {descargando === `orden-${atencion.idCita}` ? (
+                          <Spinner className="mr-1.5 h-3.5 w-3.5" />
                         ) : (
-                          <DownloadIcon className="mr-2 h-4 w-4" />
+                          <DownloadIcon className="mr-1.5 h-3.5 w-3.5" />
                         )}
                         Descargar orden de exámenes
                       </Button>
@@ -185,15 +224,25 @@ export function HistorialCard() {
           ) : documentos.data?.length ? (
             <ul className="flex flex-col gap-2">
               {documentos.data.map((doc) => (
-                <li key={doc.idDocumento}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-muted/60 py-1 pr-1 pl-3 text-sm">
+                <li
+                  key={doc.idDocumento}
+                  className="flex items-center justify-between gap-3 rounded-lg bg-muted/60 py-1 pr-1 pl-3 text-sm"
+                >
                   <span className="flex min-w-0 items-center gap-2">
-                    <FileTextIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <FileTextIcon
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                     <span className="truncate">{doc.tipoDocumento}</span>
                   </span>
-                  <Button variant="ghost" size="sm" className="h-11 text-primary sm:h-7"
-                    disabled={descargando === doc.idDocumento} onClick={() => descargar(doc)}>
-                    {descargando === doc.idDocumento ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-11 text-primary sm:h-7"
+                    disabled={descargando === `doc-${doc.idDocumento}`}
+                    onClick={() => descargar(doc)}
+                  >
+                    {descargando === `doc-${doc.idDocumento}` ? (
                       <Spinner data-icon="inline-start" />
                     ) : (
                       <DownloadIcon data-icon="inline-start" />
@@ -202,7 +251,6 @@ export function HistorialCard() {
                     <span className="sr-only">: descargar {doc.tipoDocumento}</span>
                   </Button>
                 </li>
-                
               ))}
             </ul>
           ) : (

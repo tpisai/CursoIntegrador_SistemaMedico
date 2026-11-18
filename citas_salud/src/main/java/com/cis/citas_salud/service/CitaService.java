@@ -211,15 +211,32 @@ public class CitaService {
 
     @Transactional(readOnly = true)
     public Archivo receta(UsuarioSesion sesion, Integer idCita) {
-        // Verificar que la cita pertenezca al paciente autenticado.
         Cita cita = citaDelPaciente(sesion, idCita);
-        // Buscar la atención médica asociada a esa cita.
         Atencion atencion = atencionRepository.findByCita_IdCita(cita.getIdCita())
                 .orElseThrow(() -> ApiException.noEncontrado(
-                                "Esta cita todavía no tiene una receta médica disponible."));
-        // Generar el PDF utilizando el mismo reporte JasperReports.
+                        "Esta cita todavía no tiene una receta médica disponible."));
         byte[] pdf = recetaMedicaService.generarRecetaPaciente(atencion);
         return new Archivo("receta-" + idCita + ".pdf", "application/pdf", pdf);
+    }
+
+    @Transactional(readOnly = true)
+    public Archivo constancia(UsuarioSesion sesion, Integer idCita) {
+        Cita cita = citaDelPaciente(sesion, idCita);
+        Atencion atencion = atencionRepository.findByCita_IdCita(cita.getIdCita())
+                .orElseThrow(() -> ApiException.noEncontrado(
+                        "Esta cita todavía no tiene una constancia de atención disponible."));
+        byte[] pdf = recetaMedicaService.generarConstanciaPaciente(atencion);
+        return new Archivo("constancia-" + idCita + ".pdf", "application/pdf", pdf);
+    }
+
+    @Transactional(readOnly = true)
+    public Archivo certificado(UsuarioSesion sesion, Integer idCita) {
+        Cita cita = citaDelPaciente(sesion, idCita);
+        Atencion atencion = atencionRepository.findByCita_IdCita(cita.getIdCita())
+                .orElseThrow(() -> ApiException.noEncontrado(
+                        "Esta cita todavía no tiene un certificado médico disponible."));
+        byte[] pdf = recetaMedicaService.generarCertificadoPaciente(atencion);
+        return new Archivo("certificado-" + idCita + ".pdf", "application/pdf", pdf);
     }
 
     @Transactional(readOnly = true)
@@ -227,6 +244,7 @@ public class CitaService {
         citaDelPaciente(sesion, idCita);
         return ordenExamenService.generarPdfPaciente(sesion, idCita);
     }
+
     private static String valorOGuion(String valor) {
         return valor == null || valor.isBlank() ? "-" : valor;
     }

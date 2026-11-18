@@ -1,0 +1,47 @@
+<!-- Created with Jaspersoft Studio version 7.0.8.final using JasperReports Library version 7.0.8-6f896111 -->
+<jasperReport name="ConstanciaAtencion" language="java" columnCount="1" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="30" rightMargin="30" topMargin="40" bottomMargin="40" uuid="e1a2b3c4-1111-2222-3333-444455556666">
+	<parameter name="P_NOMBRE_MEDICO" class="java.lang.String"/>
+	<parameter name="P_ESPECIALIDAD" class="java.lang.String"/>
+	<parameter name="P_NUMERO_COLEGIATURA" class="java.lang.String"/>
+	<parameter name="P_NOMBRE_PACIENTE" class="java.lang.String"/>
+	<parameter name="P_DNI_PACIENTE" class="java.lang.String"/>
+	<parameter name="P_HISTORIA_CLINICA" class="java.lang.String"/>
+	<parameter name="P_FECHA" class="java.lang.String"/>
+	<parameter name="P_HORA" class="java.lang.String"/>
+	<parameter name="P_MOTIVO" class="java.lang.String"/>
+	<query language="sql"><![CDATA[]]></query>
+	<title height="460" splitType="Stretch">
+		<element kind="staticText" uuid="a1b2c3d4-0001-0001-0001-000000000001" x="0" y="10" width="535" height="25" fontName="Arial" fontSize="16.0" bold="true" hTextAlign="Center">
+			<text><![CDATA[CENTRO DE SALUD MIGUEL GRAU]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0001-0001-0001-000000000002" x="0" y="35" width="535" height="18" fontName="Arial" fontSize="10.0" hTextAlign="Center">
+			<text><![CDATA[Área de Atención Ambulatoria y Consulta Externa]]></text>
+		</element>
+		<element kind="line" uuid="a1b2c3d4-0001-0001-0001-000000000003" x="0" y="60" width="535" height="1"/>
+		<element kind="staticText" uuid="a1b2c3d4-0001-0001-0001-000000000004" x="0" y="80" width="535" height="25" fontName="Arial" fontSize="14.0" bold="true" underline="true" hTextAlign="Center">
+			<text><![CDATA[CONSTANCIA DE ATENCIÓN MÉDICA]]></text>
+		</element>
+		<element kind="textField" uuid="b1c2d3e4-0001-0001-0001-000000000005" x="20" y="130" width="495" height="110" fontName="Arial" fontSize="11.0" hTextAlign="Justified">
+			<expression><![CDATA["Por medio de la presente, el médico que suscribe deja constancia de que el/la paciente " + $P{P_NOMBRE_PACIENTE} + ", identificado(a) con DNI/Documento N° " + ($P{P_DNI_PACIENTE} != null ? $P{P_DNI_PACIENTE} : "---") + " e Historia Clínica N° " + $P{P_HISTORIA_CLINICA} + ", fue atendido(a) en este centro de salud en la especialidad de " + $P{P_ESPECIALIDAD} + " el día " + $P{P_FECHA} + " a las " + $P{P_HORA} + " horas."]]></expression>
+		</element>
+		<element kind="staticText" uuid="b1c2d3e4-0001-0001-0001-000000000006" x="20" y="255" width="125" height="20" fontName="Arial" fontSize="11.0" bold="true">
+			<text><![CDATA[Motivo de Atención:]]></text>
+		</element>
+		<element kind="textField" uuid="b1c2d3e4-0001-0001-0001-000000000007" x="145" y="255" width="370" height="45" fontName="Arial" fontSize="11.0">
+			<expression><![CDATA[$P{P_MOTIVO} != null ? $P{P_MOTIVO} : "Atención médica programada / Consulta general"]]></expression>
+		</element>
+		<element kind="staticText" uuid="b1c2d3e4-0001-0001-0001-000000000008" x="20" y="315" width="495" height="35" fontName="Arial" fontSize="10.0" italic="true" hTextAlign="Justified">
+			<text><![CDATA[Se expide la presente constancia a solicitud de la parte interesada para los fines pertinentes que considere necesarios.]]></text>
+		</element>
+		<element kind="line" uuid="b1c2d3e4-0001-0001-0001-000000000009" x="170" y="395" width="200" height="1"/>
+		<element kind="textField" uuid="b1c2d3e4-0001-0001-0001-000000000010" x="120" y="402" width="300" height="18" fontName="Arial" fontSize="10.0" bold="true" hTextAlign="Center">
+			<expression><![CDATA["Dr(a). " + $P{P_NOMBRE_MEDICO}]]></expression>
+		</element>
+		<element kind="textField" uuid="b1c2d3e4-0001-0001-0001-000000000011" x="120" y="420" width="300" height="18" fontName="Arial" fontSize="9.0" hTextAlign="Center">
+			<expression><![CDATA["C.M.P.: " + ($P{P_NUMERO_COLEGIATURA} != null ? $P{P_NUMERO_COLEGIATURA} : "") + " | " + $P{P_ESPECIALIDAD}]]></expression>
+		</element>
+	</title>
+	<detail>
+		<band splitType="Stretch"/>
+	</detail>
+</jasperReport>

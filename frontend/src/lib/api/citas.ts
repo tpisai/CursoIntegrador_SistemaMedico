@@ -39,6 +39,14 @@ export function descargarReceta(idCita: number) {
   return requestArchivo(`/pacientes/me/citas/${idCita}/receta`)
 }
 
+export function descargarConstanciaPaciente(idCita: number) {
+  return requestArchivo(`/pacientes/me/citas/${idCita}/constancia`)
+}
+
+export function descargarCertificadoPaciente(idCita: number) {
+  return requestArchivo(`/pacientes/me/citas/${idCita}/certificado`)
+}
+
 export function descargarOrdenExamen(idCita: number) {
   return requestArchivo(`/pacientes/me/citas/${idCita}/orden-examenes`)
 }

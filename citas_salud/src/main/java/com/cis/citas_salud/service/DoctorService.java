@@ -121,24 +121,21 @@ public class DoctorService {
     public SolicitudResponse solicitarCambioFecha(UsuarioSesion sesion, CambioFechaRequest datos) {
         Doctor doctor = doctor(sesion);
         Cita cita = citaActivaDelDoctor(doctor, datos.idCita());
-        Horario nuevo = horarioRepository.findById(datos.idHorarioNuevo())
-                .filter(h -> h.getDoctor().getIdDoctor().equals(doctor.getIdDoctor()))
-                .orElseThrow(() -> ApiException.noEncontrado("No encontramos ese horario en tu agenda."));
-        if (!nuevo.estaLibre(LocalDateTime.now())) {
-            throw ApiException.conflicto("El horario propuesto ya no está libre. Elige otro.");
-        }
         exigirSinPendiente(cita, Solicitud.CAMBIO_HORARIO, "Ya enviaste un cambio de fecha para esta cita y sigue pendiente.");
 
+        // Foto de la cita original: el reporte la conserva aunque el paciente luego la reprograme.
+        Horario horario = cita.getHorario();
         Map<String, Object> detalle = new LinkedHashMap<>();
-        detalle.put("idHorarioNuevo", nuevo.getIdHorario());
-        detalle.put("fecha", Formato.fecha(nuevo.getFecha()));
-        detalle.put("horaInicio", Formato.hora(nuevo.getHoraInicio()));
-        detalle.put("consultorio", nuevo.getConsultorio().getUbicacion());
+        detalle.put("fechaOriginal", Formato.fecha(horario.getFecha()));
+        detalle.put("horaOriginal", Formato.hora(horario.getHoraInicio()));
+        detalle.put("consultorioOriginal", horario.getConsultorio().getUbicacion());
+        detalle.put("doctorOriginal", doctor.getUsuario().getNombreCorto());
+        detalle.put("especialidadOriginal", doctor.getEspecialidad().getNombre());
         Solicitud solicitud = guardar(doctor, cita, Solicitud.CAMBIO_HORARIO, datos.motivo(), detalle);
 
         avisar(doctor, "Solicitud de cambio de fecha enviada",
-                "Propusiste mover la cita de " + Formato.nombrePaciente(cita.getPaciente().getUsuario()) + " al "
-                        + Formato.diaHora(nuevo.getFecha(), nuevo.getHoraInicio()) + ". Te avisaremos cuando administración responda.");
+                "Solicitaste cambiar la cita de " + Formato.nombrePaciente(cita.getPaciente().getUsuario()) + " del "
+                        + Formato.diaHora(horario.getFecha(), horario.getHoraInicio()) + ". Te avisaremos cuando administración responda.");
         return respuesta(solicitud);
     }
 
@@ -366,6 +363,17 @@ public class DoctorService {
         if (s.getDatosAdicionales() == null) return null;
         Map<?, ?> datos = objectMapper.readValue(s.getDatosAdicionales(), Map.class);
         if (Solicitud.CAMBIO_HORARIO.equals(s.getTipo())) {
+            Object nuevaFecha = datos.get("nuevaFecha");
+            if (nuevaFecha != null) {
+                return "Cambio al " + Formato.diaHora(LocalDate.parse(String.valueOf(nuevaFecha)),
+                        LocalTime.parse(String.valueOf(datos.get("nuevaHora"))));
+            }
+            Object fechaOriginal = datos.get("fechaOriginal");
+            if (fechaOriginal != null) {
+                return "Cambio solicitado: " + Formato.diaHora(LocalDate.parse(String.valueOf(fechaOriginal)),
+                        LocalTime.parse(String.valueOf(datos.get("horaOriginal"))));
+            }
+            // Solicitudes anteriores al cambio de flujo: traían el horario propuesto.
             LocalDate fecha = LocalDate.parse(String.valueOf(datos.get("fecha")));
             return "Nueva fecha: " + Formato.diaHora(fecha, LocalTime.parse(String.valueOf(datos.get("horaInicio"))));
         }

@@ -185,7 +185,8 @@ Cada formulario valida en el navegador y otra vez en la API, y guarda en Postgre
 | Inscribirse a una campaña               | Paciente       | `/paciente/comunicacion` → Inscribirme a la campaña | `inscripcion_campania` (descuenta un cupo) |
 | Registrar atención médica               | Doctor         | `/doctor` → Atender                       | `atencion`, `documento_medico` (archivo opcional) |
 | Emitir orden de exámenes                 | Doctor         | `/doctor` → Atender                       | `orden_examen` (PDF disponible para doctor y paciente) |
-| Aprobar o rechazar solicitudes          | Administración | `/admin` → Solicitudes de cambio de fecha / de derivación | `solicitud` (+ mueve la `cita` si se aprueba un cambio de fecha) |
+| Aprobar o rechazar solicitudes          | Administración | `/admin` → Solicitudes de cambio de fecha / de derivación | `solicitud` (+ avisa al paciente, que elige el nuevo horario en su portal) |
+| Elegir el nuevo horario de un cambio    | Paciente       | Modal bloqueante al entrar al portal      | `solicitud` (+ mueve o cancela la `cita` y emite la constancia en PDF) |
 
 Además están los formularios de la primera entrega: registro de cuenta (`usuario`, `paciente` o
 `doctor`), reservar cita (`cita`), solicitar cambio de fecha y derivar paciente (`solicitud`).
@@ -265,6 +266,10 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/pacientes/me/citas/{id}/orden-examenes`                           | PDF de la orden de exámenes de una cita propia           |
 | `GET`   | `/pacientes/me/documentos`                                          | Documentos médicos                                      |
 | `GET`   | `/documentos/{id}/descarga`                                         | Archivo del documento                                   |
+| `GET`   | `/solicitudes/pendientes`                                           | Cambios de fecha aprobados que el paciente debe resolver (bloquean el portal) |
+| `GET`   | `/solicitudes/mias`                                                 | Historial de cambios de fecha del paciente e indicador de constancia |
+| `POST`  | `/solicitudes/{id}/resolver`                                        | `{ decision: MISMO_DOCTOR\|OTRO_DOCTOR\|CANCELADA, idHorarioNuevo? }`. 409 si el turno se ocupó o la solicitud ya se resolvió |
+| `GET`   | `/solicitudes/{id}/constancia`                                      | PDF de la constancia del cambio (paciente, doctor solicitante o administración) |
 | `GET`   | `/doctor/citas?fecha=YYYY-MM-DD`                                    | Citas asignadas del día (por defecto hoy)               |
 | `GET`   | `/doctor/citas/proximas`                                            | Citas activas desde hoy                                 |
 | `GET`   | `/doctor/horarios-libres`                                           | Turnos libres propios (próximos 21 días)                |
@@ -273,7 +278,7 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `PATCH` | `/doctor/citas/{id}/antecedentes`                                   | `{ alergias, antecedentes, medicacionHabitual }` |
 | `POST`  | `/doctor/atenciones/{id}/resultados`                                | `{ resultados: [{ tipoExamen, resultado, valorReferencia?, interpretacion? }] }`. Solo apoyo al diagnóstico; 409 si ya tiene |
 | `GET`   | `/doctor/documentos/{id}/descarga`                                  | Documento de un paciente que el doctor atiende |
-| `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, idHorarioNuevo, motivo }`                    |
+| `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, motivo }`                                    |
 | `POST`  | `/doctor/solicitudes/derivacion`                                    | `{ idCita, establecimiento, especialidad, motivo }`     |
 | `GET`   | `/doctor/solicitudes`                                               | Solicitudes enviadas por el doctor                      |
 | `POST`  | `/doctor/citas/{id}/atencion`                                       | `{ asistio, anamnesis?, examenFisico?, diagnostico, tratamiento, observaciones?, examenesRequeridos?, motivoClinico? }`. Los dos últimos campos emiten opcionalmente una orden |
@@ -286,7 +291,7 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
-| `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |
+| `GET`   | `/admin/solicitudes`                                                | Todas las solicitudes con su estado (pendientes e histórico) |
 | `PATCH` | `/admin/solicitudes/{id}`                                           | `{ decision: APROBAR\|RECHAZAR, respuesta? }` (el motivo es obligatorio al rechazar). 409 si ya se respondió |
 | `GET`   | `/admin/tickets/{numero}`                                           | Cita del ticket y si puede pasar (`resultado`: `VALIDO`, `YA_VALIDADO`, `OTRO_DIA`, `NO_ACTIVA`) |
 | `POST`  | `/admin/tickets/{numero}/validacion`                                | Registra la llegada del paciente y avisa al doctor. 409 si el ticket no es válido hoy |

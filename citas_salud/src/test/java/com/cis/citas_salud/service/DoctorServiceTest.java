@@ -573,21 +573,14 @@ class DoctorServiceTest {
         });
     }
 
-    private Horario turnoLibre(Doctor dueno) {
-        Horario horario = DatosPrueba.horario(21, dueno, HOY.plusDays(10));
-        when(horarioRepository.findById(21)).thenReturn(Optional.of(horario));
-        return horario;
-    }
-
     private static CambioFechaRequest cambioFecha() {
-        return new CambioFechaRequest(ID_CITA, 21, "  Reunión clínica  ");
+        return new CambioFechaRequest(ID_CITA, "  Reunión clínica  ");
     }
 
     @Test
-    void solicitarCambioDeFechaGuardaElTurnoPropuestoYAvisaAAdministracion() {
+    void solicitarCambioDeFechaGuardaLaCitaOriginalYAvisaAAdministracion() {
         existeElDoctor();
         citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        Horario propuesto = turnoLibre(doctor);
         sinSolicitudPendiente(Solicitud.CAMBIO_HORARIO);
         solicitudSeGuardaConId();
         Usuario admin = DatosPrueba.usuario(1, UsuarioSesion.ADMINISTRADOR, "44556677");
@@ -599,43 +592,21 @@ class DoctorServiceTest {
         assertEquals(Solicitud.CAMBIO_HORARIO, respuesta.tipo());
         assertEquals(Solicitud.PENDIENTE, respuesta.estado());
         assertEquals("Reunión clínica", respuesta.motivo());
-        assertTrue(respuesta.detalle().startsWith("Nueva fecha: "));
+        assertTrue(respuesta.detalle().startsWith("Cambio solicitado: "));
 
         ArgumentCaptor<Solicitud> guardada = ArgumentCaptor.forClass(Solicitud.class);
         verify(solicitudRepository).save(guardada.capture());
-        assertTrue(guardada.getValue().getDatosAdicionales().contains("\"idHorarioNuevo\":21"));
-        // El turno sigue libre hasta que administración apruebe.
-        assertEquals(Horario.DISPONIBLE, propuesto.getEstado());
+        String datos = guardada.getValue().getDatosAdicionales();
+        assertTrue(datos.contains("\"fechaOriginal\""));
+        assertTrue(datos.contains("\"horaOriginal\""));
+        assertTrue(datos.contains("\"consultorioOriginal\""));
         verify(notificacionService).crear(eq(admin), eq(Notificacion.SOLICITUD), eq("Nueva solicitud por revisar"), anyString());
-    }
-
-    @Test
-    void cambioDeFechaHaciaUnTurnoOcupadoResponde409() {
-        existeElDoctor();
-        citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(doctor).setEstado(Horario.RESERVADO);
-
-        exigeError(HttpStatus.CONFLICT, () -> servicio.solicitarCambioFecha(sesion, cambioFecha()));
-
-        verify(solicitudRepository, never()).save(any());
-    }
-
-    @Test
-    void cambioDeFechaHaciaUnTurnoDeOtroDoctorResponde404() {
-        existeElDoctor();
-        citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(otroDoctor());
-
-        exigeError(HttpStatus.NOT_FOUND, () -> servicio.solicitarCambioFecha(sesion, cambioFecha()));
-
-        verify(solicitudRepository, never()).save(any());
     }
 
     @Test
     void cambioDeFechaYaPendienteResponde409() {
         existeElDoctor();
         citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(doctor);
         when(solicitudRepository.existsByCita_IdCitaAndTipoAndEstado(ID_CITA, Solicitud.CAMBIO_HORARIO, Solicitud.PENDIENTE))
                 .thenReturn(true);
 

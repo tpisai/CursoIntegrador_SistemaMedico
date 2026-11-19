@@ -31,7 +31,6 @@ public final class DoctorDto {
 
     public record CambioFechaRequest(
             @NotNull(message = "Elige la cita que quieres cambiar.") Integer idCita,
-            @NotNull(message = "Elige la nueva fecha propuesta.") Integer idHorarioNuevo,
             @NotBlank(message = "Escribe el motivo del cambio.") @Size(max = 500, message = "El motivo es demasiado largo.") String motivo) {
     }
 

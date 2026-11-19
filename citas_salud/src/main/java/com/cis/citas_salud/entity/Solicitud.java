@@ -18,6 +18,15 @@ public class Solicitud {
     public static final String CAMBIO_HORARIO = "CAMBIO_HORARIO";
     public static final String DERIVACION = "DERIVACION";
     public static final String PENDIENTE = "PENDIENTE";
+    public static final String APROBADA = "APROBADA";
+    public static final String RECHAZADA = "RECHAZADA";
+    /** El paciente ya eligió: nuevo horario con el mismo doctor, cita con otro doctor o cancelación. */
+    public static final String RESUELTA = "RESUELTA";
+
+    // Decisiones del paciente al resolver un cambio de fecha (van en datos_adicionales).
+    public static final String MISMO_DOCTOR = "MISMO_DOCTOR";
+    public static final String OTRO_DOCTOR = "OTRO_DOCTOR";
+    public static final String CANCELADA = "CANCELADA";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

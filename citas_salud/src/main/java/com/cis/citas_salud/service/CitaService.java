@@ -107,15 +107,9 @@ public class CitaService {
         Cita cita = citaDelPaciente(sesion, idCita);
         if (!cita.estaActiva()) throw ApiException.conflicto("Esta cita ya no se puede cancelar.");
 
-        cita.setEstado(Cita.CANCELADA);
         Horario horario = cita.getHorario();
-        horario.setEstado(Horario.CANCELADO);
-        // cita.id_horario es UNIQUE: el horario queda con la cita cancelada y se abre uno nuevo para el mismo turno.
         boolean turnoLibre = !horario.yaPaso(LocalDateTime.now());
-        if (turnoLibre) {
-            horarioRepository.save(new Horario(horario.getDoctor(), horario.getConsultorio(), horario.getFecha(),
-                    horario.getHoraInicio(), horario.getHoraFin()));
-        }
+        cancelarCita(cita);
 
         notificacionService.crear(horario.getDoctor().getUsuario(), Notificacion.CITA,
                 "Cita cancelada por el paciente",
@@ -123,6 +117,18 @@ public class CitaService {
                         + Formato.diaHora(horario.getFecha(), horario.getHoraInicio())
                         + (turnoLibre ? ". El turno quedó libre." : "."));
         return respuesta(cita);
+    }
+
+    /** Cancela la cita y su turno; si el turno todavía no pasó, abre una fila nueva para volver a ofrecerlo. */
+    void cancelarCita(Cita cita) {
+        cita.setEstado(Cita.CANCELADA);
+        Horario horario = cita.getHorario();
+        horario.setEstado(Horario.CANCELADO);
+        // cita.id_horario es UNIQUE: el horario queda con la cita cancelada y se abre uno nuevo para el mismo turno.
+        if (!horario.yaPaso(LocalDateTime.now())) {
+            horarioRepository.save(new Horario(horario.getDoctor(), horario.getConsultorio(), horario.getFecha(),
+                    horario.getHoraInicio(), horario.getHoraFin()));
+        }
     }
 
     @Transactional(readOnly = true)

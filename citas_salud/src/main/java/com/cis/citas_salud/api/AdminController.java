@@ -62,8 +62,8 @@ public class AdminController {
     }
 
     @GetMapping("/solicitudes")
-    public List<SolicitudAdminResponse> solicitudesPendientes(UsuarioSesion sesion) {
-        return adminService.solicitudesPendientes(sesion);
+    public List<SolicitudAdminResponse> solicitudes(UsuarioSesion sesion) {
+        return adminService.solicitudes(sesion);
     }
 
     @PatchMapping("/solicitudes/{id}")

@@ -158,16 +158,8 @@ export interface CitaAsignada {
   consultorio: string
 }
 
-export interface HorarioLibre {
-  idHorario: number
-  fecha: string
-  horaInicio: string
-  consultorio: string
-}
-
 export interface CambioFechaRequest {
   idCita: number
-  idHorarioNuevo: number
   motivo: string
 }
 
@@ -179,7 +171,7 @@ export interface DerivacionRequest {
 }
 
 export type TipoSolicitud = "CAMBIO_HORARIO" | "DERIVACION"
-export type EstadoSolicitud = "PENDIENTE" | "EN_REVISION" | "APROBADA" | "RECHAZADA"
+export type EstadoSolicitud = "PENDIENTE" | "EN_REVISION" | "APROBADA" | "RECHAZADA" | "RESUELTA"
 
 export interface Solicitud {
   idSolicitud: number
@@ -225,6 +217,59 @@ export interface AtencionRegistrada {
   estadoCita: Extract<EstadoCita, "ATENDIDA" | "NO_ASISTIO">
   // null si el paciente no asistió.
   idAtencion: number | null
+}
+
+// --- Portal del paciente: cambios de fecha (RF-17) ---
+
+export type DecisionCambio = "MISMO_DOCTOR" | "OTRO_DOCTOR" | "CANCELADA"
+
+export interface ResolverCambioRequest {
+  decision: DecisionCambio
+  // Obligatorio para MISMO_DOCTOR y OTRO_DOCTOR.
+  idHorarioNuevo?: number
+}
+
+/** Cambio de fecha aprobado que espera la decisión del paciente. */
+export interface CambioPendiente {
+  idSolicitud: number
+  idCita: number
+  idDoctor: number
+  idEspecialidad: number
+  idConsultorio: number
+  doctor: string
+  especialidad: string
+  // Cita original: "YYYY-MM-DD" y "HH:mm".
+  fecha: string
+  hora: string
+  consultorio: string
+  motivo: string
+  fechaSolicitud: string
+  respuestaAdmin: string | null
+}
+
+export interface CambioPaciente {
+  idSolicitud: number
+  estado: EstadoSolicitud
+  fechaSolicitud: string
+  fechaCita: string
+  horaCita: string
+  // "Cambio al …" o "Cambio solicitado: …"
+  detalle: string | null
+  motivo: string
+  respuestaAdmin: string | null
+  // Solo cuando administración aprobó la solicitud.
+  constanciaDisponible: boolean
+}
+
+export interface ResolucionCambio {
+  idSolicitud: number
+  estado: EstadoSolicitud
+  decision: DecisionCambio
+  // Mensaje listo para mostrar al paciente.
+  mensaje: string
+  // Cita nueva cuando eligió otro doctor.
+  idCitaNueva: number | null
+  numeroTicket: string | null
 }
 
 // --- Panel de administración ---

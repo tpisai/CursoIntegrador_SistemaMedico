@@ -23,6 +23,7 @@ class PlantillasClinicasTest {
             "InformeMedico, ID_ATENCION",
             "InformeMedicoDerivacion, ID_ATENCION",
             "FichaConsultaPaciente, ID_PACIENTE",
+            "ConstanciaCambioFecha, ID_SOLICITUD",
     })
     void laPlantillaCompilaYPideSuParametro(String plantilla, String parametro) {
         JasperReport reporte = GeneradorReportesSql.compilar(plantilla);

@@ -8,6 +8,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EstadoSolicitudBadge } from "@/components/citas/estado-cita-badge"
+import { BotonConstanciaCambio, tieneConstanciaCambio } from "@/components/citas/boton-constancia-cambio"
 import { useSolicitudes } from "@/hooks/use-doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import { formatDiaHora, tiempoRelativo } from "@/lib/format"
@@ -69,7 +70,12 @@ export function SolicitudesCard() {
                     {s.motivo}
                   </TableCell>
                   <TableCell>
-                    <EstadoSolicitudBadge estado={s.estado} />
+                    <div className="flex flex-col items-start gap-1">
+                      <EstadoSolicitudBadge estado={s.estado} />
+                      {tieneConstanciaCambio(s.tipo, s.estado) ? (
+                        <BotonConstanciaCambio idSolicitud={s.idSolicitud} size="xs" />
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{tiempoRelativo(s.fechaSolicitud)}</TableCell>
                 </TableRow>

@@ -19,7 +19,6 @@ import com.cis.citas_salud.entity.Solicitud;
 import com.cis.citas_salud.repository.CampaniaRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.PersonalAdministrativoRepository;
 import com.cis.citas_salud.repository.SolicitudRepository;
 import org.springframework.stereotype.Service;
@@ -48,14 +47,13 @@ public class AdminService {
     private final SolicitudRepository solicitudRepository;
     private final CampaniaRepository campaniaRepository;
     private final DoctorRepository doctorRepository;
-    private final HorarioRepository horarioRepository;
     private final HorarioGeneradorService horarioGenerador;
     private final NotificacionService notificacionService;
     private final ObjectMapper objectMapper;
 
     public AdminService(PersonalAdministrativoRepository personalRepository, CitaRepository citaRepository,
                         SolicitudRepository solicitudRepository, CampaniaRepository campaniaRepository,
-                        DoctorRepository doctorRepository, HorarioRepository horarioRepository,
+                        DoctorRepository doctorRepository,
                         HorarioGeneradorService horarioGenerador, NotificacionService notificacionService,
                         ObjectMapper objectMapper) {
         this.personalRepository = personalRepository;
@@ -63,7 +61,6 @@ public class AdminService {
         this.solicitudRepository = solicitudRepository;
         this.campaniaRepository = campaniaRepository;
         this.doctorRepository = doctorRepository;
-        this.horarioRepository = horarioRepository;
         this.horarioGenerador = horarioGenerador;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
@@ -86,9 +83,9 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<SolicitudAdminResponse> solicitudesPendientes(UsuarioSesion sesion) {
+    public List<SolicitudAdminResponse> solicitudes(UsuarioSesion sesion) {
         personal(sesion);
-        return solicitudRepository.conEstado(Solicitud.PENDIENTE).stream().map(this::respuesta).toList();
+        return solicitudRepository.recientes().stream().map(this::respuesta).toList();
     }
 
     public SolicitudAdminResponse responder(UsuarioSesion sesion, Integer idSolicitud, ResponderSolicitudRequest datos) {
@@ -115,10 +112,16 @@ public class AdminService {
             if (!cita.estaActiva()) {
                 throw ApiException.conflicto("La cita ya no está activa (fue atendida o cancelada). Rechaza la solicitud.");
             }
-            Map<?, ?> detalle = objectMapper.readValue(solicitud.getDatosAdicionales(), Map.class);
             if (esCambio) {
-                reprogramar(cita, ((Number) detalle.get("idHorarioNuevo")).intValue());
+                // El doctor ya no propone horario: el paciente elige después en su portal.
+                notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.SOLICITUD,
+                        "Tu cita necesita un nuevo horario",
+                        "El doctor no podrá atender tu cita del "
+                                + Formato.diaHora(cita.getHorario().getFecha(), cita.getHorario().getHoraInicio())
+                                + ". Ingresa a Mis citas para elegir un nuevo horario con el mismo doctor, "
+                                + "una cita con otro doctor o cancelar.");
             } else {
+                Map<?, ?> detalle = objectMapper.readValue(solicitud.getDatosAdicionales(), Map.class);
                 notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.SOLICITUD,
                         "Fuiste derivado a otro establecimiento",
                         "Tu médico te derivó a " + detalle.get("establecimiento") + " para " + detalle.get("especialidad")
@@ -126,34 +129,15 @@ public class AdminService {
             }
             solicitud.setEstado(APROBADA);
             notificacionService.crear(doctor.getUsuario(), Notificacion.SOLICITUD, "Solicitud aprobada",
-                    "Administración aprobó " + queSePidio + " y avisó al paciente.");
+                    esCambio
+                            ? "Administración aprobó el cambio de fecha de " + paciente + ". El paciente debe elegir el nuevo horario."
+                            : "Administración aprobó la derivación de " + paciente + " y avisó al paciente.");
         }
 
         solicitud.setRespuestaAdmin(respuesta);
         solicitud.setFechaRespuesta(LocalDateTime.now());
         solicitud.setIdPersonalRevisor(admin.getIdPersonalAdministrativo());
         return respuesta(solicitud);
-    }
-
-    /** Mueve la cita al horario propuesto: el anterior queda libre y el nuevo, reservado. */
-    private void reprogramar(Cita cita, Integer idHorarioNuevo) {
-        Horario anterior = cita.getHorario();
-        List<Horario> bloqueados = horarioRepository.bloquearVarios(List.of(anterior.getIdHorario(), idHorarioNuevo));
-        Horario nuevo = bloqueados.stream().filter(h -> h.getIdHorario().equals(idHorarioNuevo)).findFirst()
-                .orElseThrow(() -> ApiException.conflicto("El horario propuesto ya no existe. Rechaza la solicitud."));
-        if (!nuevo.estaLibre(LocalDateTime.now())) {
-            throw ApiException.conflicto("El horario propuesto ya fue tomado por otro paciente. Rechaza la solicitud.");
-        }
-        String antes = Formato.diaHora(anterior.getFecha(), anterior.getHoraInicio());
-
-        anterior.setEstado(anterior.yaPaso(LocalDateTime.now()) ? Horario.FINALIZADO : Horario.DISPONIBLE);
-        nuevo.setEstado(Horario.RESERVADO);
-        cita.setHorario(nuevo);
-
-        notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.CITA, "Tu cita fue reprogramada",
-                "Tu cita de " + nuevo.getDoctor().getEspecialidad().getNombre() + " pasó del " + antes + " al "
-                        + Formato.diaHora(nuevo.getFecha(), nuevo.getHoraInicio()) + " en "
-                        + nuevo.getConsultorio().getUbicacion() + ". Tu ticket " + cita.getNumeroTicket() + " sigue siendo válido.");
     }
 
     public CrearHorariosResponse crearHorarios(UsuarioSesion sesion, CrearHorariosRequest datos) {

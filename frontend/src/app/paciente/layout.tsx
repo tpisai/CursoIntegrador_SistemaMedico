@@ -1,3 +1,4 @@
+import { CambioFechaPendienteDialog } from "@/components/paciente/cambio-fecha-dialog"
 import { PortalShell } from "@/components/portal/portal-shell"
 
 const ENLACES = [
@@ -12,6 +13,7 @@ export default function PacienteLayout({ children }: LayoutProps<"/paciente">) {
   return (
     <PortalShell rol="PACIENTE" enlaces={ENLACES}>
       {children}
+      <CambioFechaPendienteDialog />
     </PortalShell>
   )
 }

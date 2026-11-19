@@ -1,9 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jasperReport name="HistorialClinico" language="java" pageWidth="612" pageHeight="792"
               columnWidth="564" leftMargin="24" rightMargin="24" topMargin="24" bottomMargin="24">
-    <style name="Title" fontName="Arial" fontSize="16.0" bold="true" forecolor="#155E63"/>
-    <style name="Section" fontName="Arial" fontSize="10.0" bold="true" forecolor="#155E63"/>
-    <style name="Body" fontName="Arial" fontSize="9.0"/>
+
+    <!-- ESTILOS -->
+    <style name="MainTitle" fontName="Arial" fontSize="16.0" bold="true" forecolor="#1B4F72"/>
+    <style name="SubTitle" fontName="Arial" fontSize="12.0" bold="true" forecolor="#2874A6"/>
+    <style name="BoxHeader" mode="Opaque" backcolor="#1B4F72" forecolor="#FFFFFF" fontName="Arial" fontSize="10.0" bold="true" vTextAlign="Middle">
+        <box leftPadding="8" rightPadding="8">
+            <pen lineWidth="0.75" lineColor="#1B4F72"/>
+        </box>
+    </style>
+    <style name="ConsultaHeader" mode="Opaque" backcolor="#1B4F72" forecolor="#FFFFFF" fontName="Arial" fontSize="9.5" bold="true" vTextAlign="Middle">
+        <box topPadding="4" bottomPadding="4" leftPadding="8" rightPadding="8">
+            <pen lineWidth="0.75" lineColor="#1B4F72"/>
+        </box>
+    </style>
+    <style name="Label" fontName="Arial" fontSize="9.0" bold="true" forecolor="#1B4F72" vTextAlign="Middle"/>
+    <style name="Body" fontName="Arial" fontSize="9.0" forecolor="#2C3E50" vTextAlign="Middle"/>
+    <style name="BoxContainer" mode="Opaque" backcolor="#FFFFFF">
+        <box>
+            <pen lineWidth="0.75" lineColor="#85C1E9"/>
+        </box>
+    </style>
+    <style name="ConsultaLine" mode="Opaque" backcolor="#FFFFFF" fontName="Arial" fontSize="9.0" forecolor="#2C3E50" vTextAlign="Middle">
+        <box topPadding="2" bottomPadding="2" leftPadding="8" rightPadding="8">
+            <leftPen lineWidth="0.75" lineColor="#85C1E9"/>
+            <rightPen lineWidth="0.75" lineColor="#85C1E9"/>
+        </box>
+    </style>
+    <style name="FooterText" fontName="Arial" fontSize="8.5" italic="true" forecolor="#5D6D7E" vTextAlign="Middle"/>
+
+    <!-- PARÁMETROS -->
     <parameter name="P_NOMBRE_PACIENTE" class="java.lang.String"/>
     <parameter name="P_DNI" class="java.lang.String"/>
     <parameter name="P_FECHA_NACIMIENTO" class="java.lang.String"/>
@@ -14,90 +41,169 @@
     <parameter name="P_TELEFONO_EMERGENCIA" class="java.lang.String"/>
     <parameter name="P_NUMERO_HISTORIA" class="java.lang.String"/>
     <parameter name="P_ANTECEDENTES" class="java.lang.String"/>
+
+    <!-- CAMPOS -->
     <field name="linea" class="java.lang.String"/>
-    <title height="220" splitType="Stretch">
-        <element kind="staticText" x="0" y="0" width="564" height="24" style="Title" hTextAlign="Center">
+
+    <!-- VARIABLE PARA AGRUPAR CADA BLOQUE DE CONSULTA -->
+    <variable name="V_CONSULTA_ID" class="java.lang.Integer" calculation="Sum">
+        <expression><![CDATA[$F{linea} != null && $F{linea}.trim().startsWith("CONSULTA:") ? 1 : 0]]></expression>
+        <initialValueExpression><![CDATA[0]]></initialValueExpression>
+    </variable>
+
+    <!-- GRUPO POR BLOQUE DE CONSULTA -->
+    <group name="GrupoConsulta" keepTogether="true">
+        <expression><![CDATA[$V{V_CONSULTA_ID}]]></expression>
+        <groupFooter>
+            <!-- Cierra el borde inferior del cuadro y deja espacio antes del siguiente bloque -->
+            <band height="10">
+                <printWhenExpression><![CDATA[$V{V_CONSULTA_ID} > 0]]></printWhenExpression>
+                <element kind="line" x="0" y="0" width="564" height="1">
+                    <pen lineWidth="0.75" lineColor="#85C1E9"/>
+                </element>
+            </band>
+        </groupFooter>
+    </group>
+
+    <!-- CABECERA DEL REPORTE -->
+    <title height="236" splitType="Stretch">
+        <element kind="staticText" x="0" y="0" width="564" height="22" style="MainTitle" hTextAlign="Center" vTextAlign="Middle">
             <text><![CDATA[CENTRO DE SALUD MIGUEL GRAU]]></text>
         </element>
-        <element kind="staticText" x="0" y="28" width="564" height="22" style="Title" fontSize="14.0" hTextAlign="Center">
-            <text><![CDATA[HISTORIAL CLINICO]]></text>
+        <element kind="staticText" x="0" y="22" width="564" height="18" style="SubTitle" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[HISTORIAL CLÍNICO]]></text>
         </element>
-        <element kind="staticText" x="0" y="58" width="104" height="18" style="Section">
-            <text><![CDATA[Historia clinica:]]></text>
+        <element kind="line" x="0" y="44" width="564" height="1">
+            <pen lineWidth="1.5" lineColor="#1B4F72"/>
         </element>
-        <element kind="textField" x="104" y="58" width="200" height="18" style="Body">
-            <expression><![CDATA[$P{P_NUMERO_HISTORIA}]]></expression>
+
+        <!-- CUADRO 1: FILIACIÓN Y DATOS DEL PACIENTE -->
+        <element kind="frame" x="0" y="52" width="564" height="115" style="BoxContainer">
+            <element kind="staticText" x="0" y="0" width="564" height="20" style="BoxHeader">
+                <text><![CDATA[DATOS DE FILIACIÓN DEL PACIENTE]]></text>
+            </element>
+
+            <element kind="staticText" x="8" y="23" width="88" height="19" style="Label">
+                <text><![CDATA[Historia clínica:]]></text>
+            </element>
+            <element kind="textField" x="96" y="23" width="260" height="19" style="Body" bold="true" blankWhenNull="true">
+                <expression><![CDATA[$P{P_NUMERO_HISTORIA}]]></expression>
+            </element>
+            <element kind="staticText" x="370" y="23" width="94" height="19" style="Label">
+                <text><![CDATA[Grupo sanguíneo:]]></text>
+            </element>
+            <element kind="textField" x="464" y="23" width="92" height="19" style="Body" bold="true" blankWhenNull="true">
+                <expression><![CDATA[$P{P_GRUPO_SANGUINEO}]]></expression>
+            </element>
+            <element kind="line" x="8" y="43" width="548" height="1">
+                <pen lineWidth="0.5" lineColor="#D6EAF8"/>
+            </element>
+
+            <element kind="staticText" x="8" y="45" width="52" height="19" style="Label">
+                <text><![CDATA[Paciente:]]></text>
+            </element>
+            <element kind="textField" x="60" y="45" width="340" height="19" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_NOMBRE_PACIENTE}]]></expression>
+            </element>
+            <element kind="staticText" x="410" y="45" width="28" height="19" style="Label">
+                <text><![CDATA[DNI:]]></text>
+            </element>
+            <element kind="textField" x="438" y="45" width="118" height="19" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_DNI}]]></expression>
+            </element>
+            <element kind="line" x="8" y="65" width="548" height="1">
+                <pen lineWidth="0.5" lineColor="#D6EAF8"/>
+            </element>
+
+            <element kind="staticText" x="8" y="67" width="112" height="19" style="Label">
+                <text><![CDATA[Fecha de nacimiento:]]></text>
+            </element>
+            <element kind="textField" x="120" y="67" width="150" height="19" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_FECHA_NACIMIENTO}]]></expression>
+            </element>
+            <element kind="staticText" x="370" y="67" width="35" height="19" style="Label">
+                <text><![CDATA[Sexo:]]></text>
+            </element>
+            <element kind="textField" x="405" y="67" width="151" height="19" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_SEXO}]]></expression>
+            </element>
+            <element kind="line" x="8" y="87" width="548" height="1">
+                <pen lineWidth="0.5" lineColor="#D6EAF8"/>
+            </element>
+
+            <element kind="staticText" x="8" y="89" width="58" height="22" style="Label">
+                <text><![CDATA[Dirección:]]></text>
+            </element>
+            <element kind="textField" x="66" y="89" width="490" height="22" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_DIRECCION}]]></expression>
+            </element>
         </element>
-        <element kind="staticText" x="0" y="80" width="62" height="18" style="Section">
-            <text><![CDATA[Paciente:]]></text>
+
+        <!-- CUADRO 2: CONTACTO DE EMERGENCIA -->
+        <element kind="frame" x="0" y="174" width="564" height="44" style="BoxContainer">
+            <element kind="staticText" x="0" y="0" width="564" height="20" style="BoxHeader">
+                <text><![CDATA[CONTACTO DE EMERGENCIA]]></text>
+            </element>
+            <element kind="staticText" x="8" y="22" width="116" height="20" style="Label">
+                <text><![CDATA[Persona de contacto:]]></text>
+            </element>
+            <element kind="textField" x="124" y="22" width="240" height="20" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_CONTACTO_EMERGENCIA}]]></expression>
+            </element>
+            <element kind="staticText" x="370" y="22" width="56" height="20" style="Label">
+                <text><![CDATA[Teléfono:]]></text>
+            </element>
+            <element kind="textField" x="426" y="22" width="130" height="20" style="Body" blankWhenNull="true">
+                <expression><![CDATA[$P{P_TELEFONO_EMERGENCIA}]]></expression>
+            </element>
         </element>
-        <element kind="textField" x="62" y="80" width="360" height="18" style="Body">
-            <expression><![CDATA[$P{P_NOMBRE_PACIENTE}]]></expression>
-        </element>
-        <element kind="staticText" x="422" y="80" width="34" height="18" style="Section">
-            <text><![CDATA[DNI:]]></text>
-        </element>
-        <element kind="textField" x="456" y="80" width="108" height="18" style="Body">
-            <expression><![CDATA[$P{P_DNI}]]></expression>
-        </element>
-        <element kind="staticText" x="0" y="102" width="124" height="18" style="Section">
-            <text><![CDATA[Fecha de nacimiento:]]></text>
-        </element>
-        <element kind="textField" x="124" y="102" width="110" height="18" style="Body">
-            <expression><![CDATA[$P{P_FECHA_NACIMIENTO}]]></expression>
-        </element>
-        <element kind="staticText" x="250" y="102" width="40" height="18" style="Section">
-            <text><![CDATA[Sexo:]]></text>
-        </element>
-        <element kind="textField" x="290" y="102" width="120" height="18" style="Body">
-            <expression><![CDATA[$P{P_SEXO}]]></expression>
-        </element>
-        <element kind="staticText" x="0" y="124" width="70" height="18" style="Section">
-            <text><![CDATA[Direccion:]]></text>
-        </element>
-        <element kind="textField" x="70" y="124" width="300" height="18" style="Body">
-            <expression><![CDATA[$P{P_DIRECCION}]]></expression>
-        </element>
-        <element kind="staticText" x="382" y="124" width="96" height="18" style="Section">
-            <text><![CDATA[Grupo sanguineo:]]></text>
-        </element>
-        <element kind="textField" x="478" y="124" width="86" height="18" style="Body">
-            <expression><![CDATA[$P{P_GRUPO_SANGUINEO}]]></expression>
-        </element>
-        <element kind="staticText" x="0" y="146" width="128" height="18" style="Section">
-            <text><![CDATA[Contacto emergencia:]]></text>
-        </element>
-        <element kind="textField" x="128" y="146" width="250" height="18" style="Body">
-            <expression><![CDATA[$P{P_CONTACTO_EMERGENCIA}]]></expression>
-        </element>
-        <element kind="staticText" x="382" y="146" width="76" height="18" style="Section">
-            <text><![CDATA[Telefono:]]></text>
-        </element>
-        <element kind="textField" x="458" y="146" width="106" height="18" style="Body">
-            <expression><![CDATA[$P{P_TELEFONO_EMERGENCIA}]]></expression>
-        </element>
-        <element kind="staticText" x="0" y="170" width="564" height="18" style="Section">
-            <text><![CDATA[Antecedentes / observaciones registradas en la historia clinica]]></text>
-        </element>
-        <element kind="textField" x="0" y="190" width="564" height="28" style="Body" textAdjust="StretchHeight">
-            <expression><![CDATA[$P{P_ANTECEDENTES}]]></expression>
+
+        <!-- CUADRO 3: ANTECEDENTES -->
+        <element kind="frame" x="0" y="225" width="564" height="10" style="BoxContainer" positionType="Float">
+            <element kind="staticText" x="0" y="0" width="564" height="20" style="BoxHeader">
+                <text><![CDATA[ANTECEDENTES / OBSERVACIONES REGISTRADAS EN LA HISTORIA CLÍNICA]]></text>
+            </element>
+            <element kind="textField" x="0" y="20" width="564" height="26" style="Body" textAdjust="StretchHeight" blankWhenNull="true">
+                <box topPadding="6" bottomPadding="6" leftPadding="8" rightPadding="8"/>
+                <expression><![CDATA[$P{P_ANTECEDENTES}]]></expression>
+            </element>
         </element>
     </title>
-    <columnHeader height="28">
-        <element kind="staticText" x="0" y="4" width="564" height="20" style="Section">
+
+    <!-- ENCABEZADO DE SECCIÓN DE CONSULTAS -->
+    <columnHeader height="30">
+        <element kind="staticText" x="0" y="6" width="564" height="20" style="BoxHeader">
             <text><![CDATA[CONSULTAS Y ATENCIONES]]></text>
         </element>
     </columnHeader>
+
+    <!-- DETALLE DE CONSULTAS -->
     <detail>
-        <band height="22" splitType="Stretch">
-            <element kind="textField" x="0" y="2" width="564" height="18" style="Body" textAdjust="StretchHeight">
+        <!-- BANDA A: Se muestra SOLO cuando la línea empieza con "CONSULTA:" (Encabezado azul del bloque) -->
+        <band height="22" splitType="Prevent">
+            <printWhenExpression><![CDATA[$F{linea} != null && $F{linea}.trim().startsWith("CONSULTA:")]]></printWhenExpression>
+            <element kind="textField" x="0" y="0" width="564" height="22" style="ConsultaHeader" textAdjust="StretchHeight" blankWhenNull="true">
+                <expression><![CDATA[$F{linea}]]></expression>
+            </element>
+        </band>
+
+        <!-- BANDA B: Se muestra para las líneas internas del bloque (Fondo blanco y bordes laterales) -->
+        <band height="18" splitType="Prevent">
+            <printWhenExpression><![CDATA[$F{linea} != null && !$F{linea}.trim().isEmpty() && !$F{linea}.trim().startsWith("CONSULTA:")]]></printWhenExpression>
+            <element kind="textField" x="0" y="0" width="564" height="18" style="ConsultaLine" textAdjust="StretchHeight" blankWhenNull="true">
                 <expression><![CDATA[$F{linea}]]></expression>
             </element>
         </band>
     </detail>
-    <pageFooter height="22">
-        <element kind="staticText" x="0" y="2" width="564" height="16" style="Body" hTextAlign="Center">
+
+    <!-- PIE DE PÁGINA -->
+    <pageFooter height="28">
+        <element kind="line" x="0" y="4" width="564" height="1">
+            <pen lineWidth="0.75" lineColor="#85C1E9"/>
+        </element>
+        <element kind="staticText" x="0" y="8" width="564" height="16" style="FooterText" hTextAlign="Center">
             <text><![CDATA[Documento confidencial - uso exclusivo del paciente y personal autorizado]]></text>
         </element>
     </pageFooter>
+
 </jasperReport>

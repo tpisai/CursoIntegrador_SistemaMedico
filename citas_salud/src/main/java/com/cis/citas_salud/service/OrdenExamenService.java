@@ -91,7 +91,7 @@ public class OrdenExamenService {
         parametros.put("P_DNI_PACIENTE", usuarioPaciente.getDni());
         parametros.put("P_HISTORIA_CLINICA", atencion.getHistoria().getNumeroHistoria());
         List<Map<String, ?>> secciones = List.of(
-                seccion("Exámenes requeridos", orden.getExamenesRequeridos()),
+                seccion("Exámenes requeridos", normalizarExamenes(orden.getExamenesRequeridos())),
                 seccion("Motivo clínico", orden.getMotivoClinico()),
                 seccion("Médico solicitante", usuarioDoctor.getNombres() + " " + usuarioDoctor.getApellidos()
                         + "\nEspecialidad: "
@@ -117,7 +117,7 @@ public class OrdenExamenService {
         }
     }
 
-    private String normalizarExamenes(String examenes) {
+    static String normalizarExamenes(String examenes) {
         if (examenes == null) {
             return "";
         }
@@ -125,7 +125,7 @@ public class OrdenExamenService {
                 .map(String::trim)
                 .filter(linea -> !linea.isBlank())
                 .distinct()
-                .reduce((a, b) -> a + "\n" + b)
+                .reduce((a, b) -> a + ", " + b)
                 .orElse("");
     }
 

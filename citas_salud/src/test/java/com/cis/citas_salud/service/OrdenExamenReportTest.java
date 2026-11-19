@@ -12,9 +12,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OrdenExamenReportTest {
+
+    @Test
+    void joinsRequestedExamsOnOneLine() {
+        assertEquals(
+                "Hemograma completo, Glucosa en ayunas",
+                OrdenExamenService.normalizarExamenes("Hemograma completo\nGlucosa en ayunas")
+        );
+    }
 
     @Test
     void compilesFillsAndExportsExaminationOrderPdf() throws Exception {
@@ -26,7 +35,8 @@ class OrdenExamenReportTest {
                 "P_HISTORIA_CLINICA", "HC-000001"
         ));
         List<Map<String, ?>> secciones = List.of(
-                Map.of("titulo", "Exámenes requeridos", "contenido", "Hemograma completo\nGlucosa en ayunas"),
+                Map.of("titulo", "Exámenes requeridos", "contenido",
+                        OrdenExamenService.normalizarExamenes("Hemograma completo\nGlucosa en ayunas")),
                 Map.of("titulo", "Motivo clínico", "contenido", "Evaluación clínica de prueba"),
                 Map.of("titulo", "Médico solicitante", "contenido",
                         "Rodrigo Mendoza\nEspecialidad: Medicina General\nCMP: 045812")

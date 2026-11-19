@@ -2,6 +2,5 @@
 .env
 .env.*
 !.env.example
-
 # Respaldos de la base: contienen datos de pacientes.
 respaldos/

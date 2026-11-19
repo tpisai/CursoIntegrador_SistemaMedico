@@ -7,6 +7,7 @@ import com.cis.citas_salud.api.dto.AdminDto.Decision;
 import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.SolicitudAdminResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Consultorio;
 import com.cis.citas_salud.entity.Doctor;
@@ -15,10 +16,10 @@ import com.cis.citas_salud.entity.Notificacion;
 import com.cis.citas_salud.entity.Paciente;
 import com.cis.citas_salud.entity.PersonalAdministrativo;
 import com.cis.citas_salud.entity.Solicitud;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CampaniaRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.PersonalAdministrativoRepository;
 import com.cis.citas_salud.repository.SolicitudRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,13 +60,11 @@ class AdminServiceTest {
 
     private static final int ID_SOLICITUD = 7;
     private static final int ID_HORARIO_ANTERIOR = 5;
-    private static final int ID_HORARIO_NUEVO = 21;
     private static final int ID_DOCTOR = 3;
     private static final int ID_CONSULTORIO = 1;
     private static final int ID_PERSONAL = 2;
     private static final LocalDate HOY = LocalDate.now();
     private static final LocalDate EN_CINCO_DIAS = HOY.plusDays(5);
-    private static final LocalDate EN_DIEZ_DIAS = HOY.plusDays(10);
     private static final LocalTime OCHO = LocalTime.of(8, 0);
     private static final LocalTime DOCE = LocalTime.of(12, 0);
 
@@ -76,11 +75,11 @@ class AdminServiceTest {
     @Mock
     private SolicitudRepository solicitudRepository;
     @Mock
+    private AtencionRepository atencionRepository;
+    @Mock
     private CampaniaRepository campaniaRepository;
     @Mock
     private DoctorRepository doctorRepository;
-    @Mock
-    private HorarioRepository horarioRepository;
     @Mock
     private HorarioGeneradorService horarioGenerador;
     @Mock
@@ -92,13 +91,12 @@ class AdminServiceTest {
     private Doctor doctor;
     private Paciente paciente;
     private Horario anterior;
-    private Horario nuevo;
     private Cita cita;
 
     @BeforeEach
     void preparar() {
-        servicio = new AdminService(personalRepository, citaRepository, solicitudRepository, campaniaRepository,
-                doctorRepository, horarioRepository, horarioGenerador, notificacionService, JsonMapper.builder().build());
+        servicio = new AdminService(personalRepository, citaRepository, solicitudRepository, atencionRepository,
+                campaniaRepository, doctorRepository, horarioGenerador, notificacionService, JsonMapper.builder().build());
         personal = new PersonalAdministrativo();
         personal.setIdPersonalAdministrativo(ID_PERSONAL);
         personal.setUsuario(DatosPrueba.usuario(1, UsuarioSesion.ADMINISTRADOR, "44556677"));
@@ -107,7 +105,6 @@ class AdminServiceTest {
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         anterior = DatosPrueba.horario(ID_HORARIO_ANTERIOR, doctor, EN_CINCO_DIAS);
         anterior.setEstado(Horario.RESERVADO);
-        nuevo = DatosPrueba.horario(ID_HORARIO_NUEVO, doctor, EN_DIEZ_DIAS);
         cita = DatosPrueba.cita(33, paciente, anterior, Cita.CONFIRMADA);
     }
 
@@ -128,8 +125,9 @@ class AdminServiceTest {
 
     private Solicitud cambioDeFecha() {
         return solicitud(Solicitud.CAMBIO_HORARIO, """
-                {"idHorarioNuevo":%d,"fecha":"%s","horaInicio":"09:00","consultorio":"Módulo A · Consultorio 1"}
-                """.formatted(ID_HORARIO_NUEVO, EN_DIEZ_DIAS));
+                {"fechaOriginal":"%s","horaOriginal":"09:00","consultorioOriginal":"Módulo A · Consultorio 1",
+                 "doctorOriginal":"Ana Quispe","especialidadOriginal":"Medicina General"}
+                """.formatted(EN_CINCO_DIAS));
     }
 
     private Solicitud derivacion() {
@@ -146,10 +144,6 @@ class AdminServiceTest {
         return solicitud;
     }
 
-    private void horariosBloqueados(Horario... horarios) {
-        when(horarioRepository.bloquearVarios(List.of(ID_HORARIO_ANTERIOR, ID_HORARIO_NUEVO))).thenReturn(List.of(horarios));
-    }
-
     private SolicitudAdminResponse aprobar() {
         return servicio.responder(sesion, ID_SOLICITUD, new ResponderSolicitudRequest(Decision.APROBAR, null));
     }
@@ -161,62 +155,37 @@ class AdminServiceTest {
     // ----- Cambio de fecha -----
 
     @Test
-    void aprobarCambioDeFechaMueveLaCitaYLiberaElTurnoAnterior() {
+    void solicitudesIncluyeIdAtencionCuandoYaExisteReferenciaDescargable() {
+        existeElPersonal();
+        when(solicitudRepository.recientes()).thenReturn(List.of(solicitud(Solicitud.DERIVACION, "{}")));
+        Atencion atencion = new Atencion();
+        atencion.setIdAtencion(90);
+        atencion.setCita(cita);
+        when(atencionRepository.findByCita_IdCitaIn(List.of(33))).thenReturn(List.of(atencion));
+
+        List<SolicitudAdminResponse> solicitudes = servicio.solicitudes(sesion);
+
+        assertEquals(90, solicitudes.get(0).idAtencion());
+    }
+
+    @Test
+    void aprobarCambioDeFechaNoMueveLaCitaYAvisaAlPacienteParaQueElija() {
         Solicitud solicitud = pendiente(cambioDeFecha());
-        horariosBloqueados(anterior, nuevo);
 
         SolicitudAdminResponse respuesta = aprobar();
 
-        assertSame(nuevo, cita.getHorario());
-        assertEquals(Horario.RESERVADO, nuevo.getEstado());
-        assertEquals(Horario.DISPONIBLE, anterior.getEstado());
-        assertEquals("APROBADA", respuesta.estado());
-        assertEquals("APROBADA", solicitud.getEstado());
-        assertEquals(EN_DIEZ_DIAS.toString(), respuesta.fechaCita());
-        assertTrue(respuesta.detalle().startsWith("Nueva fecha: "));
-        assertNotNull(solicitud.getFechaRespuesta());
-        assertEquals(ID_PERSONAL, solicitud.getIdPersonalRevisor());
-        verify(notificacionService).crear(eq(paciente.getUsuario()), eq(Notificacion.CITA),
-                eq("Tu cita fue reprogramada"), contains(DatosPrueba.TICKET));
-        verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
-                eq("Solicitud aprobada"), anyString());
-    }
-
-    @Test
-    void aprobarCambioConElTurnoAnteriorYaPasadoLoFinaliza() {
-        anterior.setFecha(HOY.minusDays(1));
-        pendiente(cambioDeFecha());
-        horariosBloqueados(anterior, nuevo);
-
-        aprobar();
-
-        assertEquals(Horario.FINALIZADO, anterior.getEstado());
-        assertSame(nuevo, cita.getHorario());
-    }
-
-    @Test
-    void aprobarCambioConElTurnoNuevoYaTomadoResponde409SinMoverLaCita() {
-        Solicitud solicitud = pendiente(cambioDeFecha());
-        nuevo.setEstado(Horario.RESERVADO);
-        horariosBloqueados(anterior, nuevo);
-
-        exigeError(HttpStatus.CONFLICT, this::aprobar);
-
         assertSame(anterior, cita.getHorario());
         assertEquals(Horario.RESERVADO, anterior.getEstado());
-        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
-        verifyNoInteractions(notificacionService);
-    }
-
-    @Test
-    void aprobarCambioConElTurnoNuevoEliminadoResponde409() {
-        Solicitud solicitud = pendiente(cambioDeFecha());
-        horariosBloqueados(anterior);
-
-        exigeError(HttpStatus.CONFLICT, this::aprobar);
-
-        assertSame(anterior, cita.getHorario());
-        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
+        assertEquals("APROBADA", respuesta.estado());
+        assertEquals("APROBADA", solicitud.getEstado());
+        assertEquals(EN_CINCO_DIAS.toString(), respuesta.fechaCita());
+        assertTrue(respuesta.detalle().startsWith("Cambio solicitado: "));
+        assertNotNull(solicitud.getFechaRespuesta());
+        assertEquals(ID_PERSONAL, solicitud.getIdPersonalRevisor());
+        verify(notificacionService).crear(eq(paciente.getUsuario()), eq(Notificacion.SOLICITUD),
+                eq("Tu cita necesita un nuevo horario"), contains("nuevo horario"));
+        verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
+                eq("Solicitud aprobada"), contains("nuevo horario"));
     }
 
     @Test
@@ -230,8 +199,6 @@ class AdminServiceTest {
         assertEquals("Sin cupos ese día", solicitud.getRespuestaAdmin());
         assertSame(anterior, cita.getHorario());
         assertEquals(Horario.RESERVADO, anterior.getEstado());
-        assertEquals(Horario.DISPONIBLE, nuevo.getEstado());
-        verifyNoInteractions(horarioRepository);
         verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Solicitud rechazada"), contains("Sin cupos ese día"));
         verify(notificacionService, never()).crear(eq(paciente.getUsuario()), anyString(), anyString(), anyString());
@@ -242,6 +209,8 @@ class AdminServiceTest {
     @Test
     void aprobarDerivacionAvisaAlPacienteYAlDoctor() {
         Solicitud solicitud = pendiente(derivacion());
+        cita.setEstado(Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(cita.getIdCita())).thenReturn(true);
 
         SolicitudAdminResponse respuesta = aprobar();
 
@@ -249,11 +218,33 @@ class AdminServiceTest {
         assertEquals("Hospital de Chosica · Cardiología", respuesta.detalle());
         assertEquals("APROBADA", solicitud.getEstado());
         assertSame(anterior, cita.getHorario());
-        verifyNoInteractions(horarioRepository);
         verify(notificacionService).crear(eq(paciente.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Fuiste derivado a otro establecimiento"), contains("Hospital de Chosica"));
         verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Solicitud aprobada"), anyString());
+    }
+
+    @Test
+    void aprobarDerivacionDeCitaSinAtenderResponde409() {
+        Solicitud solicitud = pendiente(derivacion());
+
+        ApiException error = exigeError(HttpStatus.CONFLICT, this::aprobar);
+
+        assertEquals("Solo se puede aprobar una derivación después de registrar la atención.", error.getMessage());
+        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
+        verifyNoInteractions(notificacionService);
+    }
+
+    @Test
+    void aprobarDerivacionAtendidaSinAtencionRegistradaResponde409() {
+        Solicitud solicitud = pendiente(derivacion());
+        cita.setEstado(Cita.ATENDIDA);
+
+        ApiException error = exigeError(HttpStatus.CONFLICT, this::aprobar);
+
+        assertEquals("Solo se puede aprobar una derivación después de registrar la atención.", error.getMessage());
+        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
+        verifyNoInteractions(notificacionService);
     }
 
     @Test
@@ -314,7 +305,6 @@ class AdminServiceTest {
         exigeError(HttpStatus.CONFLICT, this::aprobar);
 
         assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
-        verifyNoInteractions(horarioRepository);
     }
 
     @Test

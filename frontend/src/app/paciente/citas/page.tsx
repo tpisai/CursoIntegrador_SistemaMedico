@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 
+import { CambiosPacienteCard } from "@/components/citas/cambios-paciente-card"
 import { MisCitasCard } from "@/components/citas/mis-citas-card"
 import { Encabezado } from "@/components/portal/encabezado"
 
@@ -14,6 +15,7 @@ export default function MisCitasPage() {
         titulo="Mis citas"
         descripcion="Confirma tu asistencia, muestra tu ticket en recepción o cancela si no podrás ir."
       />
+      <CambiosPacienteCard />
       <MisCitasCard mostrarAgendar />
     </>
   )

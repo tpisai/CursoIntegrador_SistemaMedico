@@ -8,7 +8,16 @@ import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldError, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldTitle,
+} from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -35,6 +44,8 @@ type Ficha = {
   diagnostico: string
   tratamiento: string
   observaciones: string
+  examenesRequeridos: string
+  motivoClinico: string
 }
 type Errores = Partial<Record<keyof Ficha, string>> & ErroresAdjunto
 
@@ -56,6 +67,8 @@ export function FichaConsulta({ cita }: { cita: CitaAsignada }) {
     diagnostico: "",
     tratamiento: "",
     observaciones: "",
+    examenesRequeridos: "",
+    motivoClinico: "",
   })
   const [medicamentos, setMedicamentos] = useState<MedicamentoRequest[]>([])
   const [adjunto, setAdjunto] = useState<Adjunto>({ tipoDocumento: "", archivo: null })
@@ -75,6 +88,12 @@ export function FichaConsulta({ cita }: { cita: CitaAsignada }) {
     const nuevos: Errores = validarAdjunto(adjunto)
     if (ficha.diagnostico.trim().length < 3) nuevos.diagnostico = "Escribe el diagnóstico."
     if (ficha.tratamiento.trim().length < 3) nuevos.tratamiento = "Escribe el tratamiento indicado."
+    if (ficha.examenesRequeridos.trim() && ficha.motivoClinico.trim().length < 3) {
+      nuevos.motivoClinico = "Indica el motivo clínico de los exámenes."
+    }
+    if (!ficha.examenesRequeridos.trim() && ficha.motivoClinico.trim()) {
+      nuevos.examenesRequeridos = "Agrega al menos un examen o borra el motivo clínico."
+    }
     const faltanNombres = medicamentosSinNombre(medicamentos)
     setErrores(nuevos)
     setSinNombre(faltanNombres)
@@ -168,6 +187,36 @@ export function FichaConsulta({ cita }: { cita: CitaAsignada }) {
                     setSinNombre([])
                   }}
                 />
+                <FieldSet>
+                  <FieldLegend variant="label">Orden de exámenes (opcional)</FieldLegend>
+                  <FieldDescription>
+                    Escribe un examen por línea. Si agregas exámenes, indica el motivo clínico.
+                  </FieldDescription>
+                  <Field data-invalid={!!errores.examenesRequeridos}>
+                    <FieldLabel htmlFor="ficha-examenes-requeridos">Exámenes requeridos</FieldLabel>
+                    <Textarea
+                      id="ficha-examenes-requeridos"
+                      placeholder={"Ej. Hemograma completo\nGlucosa en ayunas"}
+                      maxLength={4000}
+                      aria-invalid={!!errores.examenesRequeridos}
+                      value={ficha.examenesRequeridos}
+                      onChange={(e) => actualizar("examenesRequeridos", e.target.value)}
+                    />
+                    <FieldError>{errores.examenesRequeridos}</FieldError>
+                  </Field>
+                  <Field data-invalid={!!errores.motivoClinico}>
+                    <FieldLabel htmlFor="ficha-motivo-clinico">Motivo clínico</FieldLabel>
+                    <Textarea
+                      id="ficha-motivo-clinico"
+                      placeholder="Describe brevemente el motivo de la solicitud."
+                      maxLength={2000}
+                      aria-invalid={!!errores.motivoClinico}
+                      value={ficha.motivoClinico}
+                      onChange={(e) => actualizar("motivoClinico", e.target.value)}
+                    />
+                    <FieldError>{errores.motivoClinico}</FieldError>
+                  </Field>
+                </FieldSet>
                 <AdjuntarDocumento
                   id="ficha-adjunto"
                   descripcion="Resultados, informe u otro archivo. El paciente podrá descargarlo."

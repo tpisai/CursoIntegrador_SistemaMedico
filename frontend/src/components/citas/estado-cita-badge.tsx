@@ -22,6 +22,7 @@ const ESTADOS_SOLICITUD: Record<EstadoSolicitud, { texto: string; variant: Varia
   EN_REVISION: { texto: "En revisión", variant: "outline" },
   APROBADA: { texto: "Aprobada", variant: "success" },
   RECHAZADA: { texto: "Rechazada", variant: "destructive" },
+  RESUELTA: { texto: "Resuelta", variant: "success" },
 }
 
 export function EstadoSolicitudBadge({ estado }: { estado: EstadoSolicitud }) {

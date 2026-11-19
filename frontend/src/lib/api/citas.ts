@@ -54,3 +54,7 @@ export function descargarOrdenExamen(idCita: number) {
 export function descargarHistorialClinico() {
   return requestArchivo("/pacientes/me/historial/pdf")
 }
+
+export function descargarReferenciaPaciente(idAtencion: number) {
+  return requestArchivo(`/pacientes/me/atenciones/${idAtencion}/referencia`)
+}

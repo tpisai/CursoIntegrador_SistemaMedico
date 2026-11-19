@@ -12,7 +12,7 @@ export function useResumenAdmin() {
   return useSWR<ResumenAdmin>(rutasAdmin.resumen, AL_DIA)
 }
 
-export function useSolicitudesPendientes() {
+export function useSolicitudesAdmin() {
   return useSWR<SolicitudAdmin[]>(rutasAdmin.solicitudes, AL_DIA)
 }
 

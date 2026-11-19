@@ -10,7 +10,7 @@ tareas, controles más grandes y un teal un tono más oscuro para cumplir el con
 
 ## Cómo correr el sistema completo
 
-Requisitos: PostgreSQL 17, JDK 25, Node.js 20.9 o superior.
+Requisitos: PostgreSQL 17, JDK 21, Node.js 20.9 o superior.
 
 **1. Contraseña local de PostgreSQL.** Crea `citas_salud/config/application.properties` (git lo ignora) con:
 
@@ -41,7 +41,7 @@ instalador usa el PostgreSQL que encuentre en la PC (17, 18...).
 Las fechas de los datos de prueba se calculan desde el día de la instalación. Si pasan semanas, las citas y
 campañas de ejemplo quedan en el pasado y los paneles se ven vacíos: `-Reiniciar` las renueva.
 
-**3. Backend** (puerto 8080). Desde `citas_salud/`, con `JAVA_HOME` apuntando al JDK 25:
+**3. Backend** (puerto 8080). Desde `citas_salud/`, con `JAVA_HOME` apuntando al JDK 21:
 
 ```powershell
 .\mvnw spring-boot:run
@@ -87,14 +87,14 @@ consultorio, así que no aparece en la reserva en línea.
 | `/paciente/agendar`      | 02 · Portal del Paciente, M3 · Cita confirmada       | RF-05 a RF-09, RF-11 |
 | `/paciente`              | Inicio: próxima cita, accesos, citas e historial     | RF-07, RF-09         |
 | `/paciente/citas`        | Mis citas activas (ver ticket, confirmar, cancelar)  | RF-07, RF-08         |
-| `/paciente/historial`    | Historial de atención y documentos                   | RF-09, RF-11         |
+| `/paciente/historial`    | Historial de atención, documentos y referencias de derivación | RF-09, RF-11, RF-16 |
 | `/paciente/comunicacion` | 05 · Comunicación y Campañas: inscripción y comprobante | RF-19 a RF-21     |
 | `/doctor/agenda`         | Agenda del doctor: hoy, 7 días o un rango de fechas  | RF-14                |
 | `/doctor/consulta/[idCita]` | Consulta: ficha o reporte de exámenes e historia clínica del paciente | RF-10, RF-11 |
 | `/doctor/solicitudes`    | Pedir cambio de fecha o derivación y seguir la respuesta | RF-15, RF-16     |
 | `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
-| `/admin/reportes`        | Reportes de control de citas y ausentismo            | EDT 4.8              |
+| `/admin/reportes`        | Reportes de control de citas y reporte integral descargable en PDF | EDT 4.8              |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
 
 Al registrar una atención, el doctor puede solicitar exámenes de forma opcional: escribe un examen
@@ -185,7 +185,8 @@ Cada formulario valida en el navegador y otra vez en la API, y guarda en Postgre
 | Inscribirse a una campaña               | Paciente       | `/paciente/comunicacion` → Inscribirme a la campaña | `inscripcion_campania` (descuenta un cupo) |
 | Registrar atención médica               | Doctor         | `/doctor` → Atender                       | `atencion`, `documento_medico` (archivo opcional) |
 | Emitir orden de exámenes                 | Doctor         | `/doctor` → Atender                       | `orden_examen` (PDF disponible para doctor y paciente) |
-| Aprobar o rechazar solicitudes          | Administración | `/admin` → Solicitudes de cambio de fecha / de derivación | `solicitud` (+ mueve la `cita` si se aprueba un cambio de fecha) |
+| Aprobar o rechazar solicitudes          | Administración | `/admin` → Solicitudes de cambio de fecha / de derivación | `solicitud` (+ avisa al paciente, que elige el nuevo horario en su portal) |
+| Elegir el nuevo horario de un cambio    | Paciente       | Modal bloqueante al entrar al portal      | `solicitud` (+ mueve o cancela la `cita` y emite la constancia en PDF) |
 
 Además están los formularios de la primera entrega: registro de cuenta (`usuario`, `paciente` o
 `doctor`), reservar cita (`cita`), solicitar cambio de fecha y derivar paciente (`solicitud`).
@@ -206,7 +207,7 @@ Los datos iniciales dejan al menos 5 registros en cada una de esas tablas:
 
 | Prueba                  | Cómo se ejecuta                                                         | Necesita                     |
 | ----------------------- | ----------------------------------------------------------------------- | ---------------------------- |
-| Unitarias (JUnit)       | `.\mvnw test`, desde `citas_salud/`                                     | Solo el JDK 25               |
+| Unitarias (JUnit)       | `.\mvnw test`, desde `citas_salud/`                                     | Solo el JDK 21               |
 | Integración (Postman)   | Pasos en la descripción de `docs/postman/SaludGrau.postman_collection.json` | Base de prueba recién instalada |
 | Carga y concurrencia    | `node docs/pruebas/prueba-carga.mjs http://localhost:8081`              | Base de prueba recién instalada |
 
@@ -261,20 +262,26 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `PATCH` | `/citas/{id}/cancelar`                                              | Cancela y libera el turno                               |
 | `PATCH` | `/citas/{id}/confirmar`                                             | El paciente confirma su asistencia: RESERVADA pasa a CONFIRMADA. 409 si ya no se puede |
 | `GET`   | `/citas/{id}/ticket`                                                | PDF del ticket                                          |
-| `GET`   | `/pacientes/me/historial`                                           | Atenciones (asistió / no asistió)                       |
+| `GET`   | `/pacientes/me/historial`                                           | Atenciones con `idAtencion` y `tieneDerivacion` para el historial médico |
+| `GET`   | `/pacientes/me/atenciones/{id}/referencia`                           | PDF de una derivación de la atención propia             |
 | `GET`   | `/pacientes/me/citas/{id}/orden-examenes`                           | PDF de la orden de exámenes de una cita propia           |
 | `GET`   | `/pacientes/me/documentos`                                          | Documentos médicos                                      |
 | `GET`   | `/documentos/{id}/descarga`                                         | Archivo del documento                                   |
+| `GET`   | `/solicitudes/pendientes`                                           | Cambios de fecha aprobados que el paciente debe resolver (bloquean el portal) |
+| `GET`   | `/solicitudes/mias`                                                 | Historial de cambios de fecha del paciente e indicador de constancia |
+| `POST`  | `/solicitudes/{id}/resolver`                                        | `{ decision: MISMO_DOCTOR\|OTRO_DOCTOR\|CANCELADA, idHorarioNuevo? }`. 409 si el turno se ocupó o la solicitud ya se resolvió |
+| `GET`   | `/solicitudes/{id}/constancia`                                      | PDF de la constancia del cambio (paciente, doctor solicitante o administración) |
 | `GET`   | `/doctor/citas?fecha=YYYY-MM-DD`                                    | Citas asignadas del día (por defecto hoy)               |
 | `GET`   | `/doctor/citas/proximas`                                            | Citas activas desde hoy                                 |
+| `GET`   | `/doctor/citas/atendidas`                                           | Citas con atención registrada, elegibles para derivación |
 | `GET`   | `/doctor/horarios-libres`                                           | Turnos libres propios (próximos 21 días)                |
 | `GET`   | `/doctor/agenda?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`                  | Citas del doctor en el rango (hasta 31 días). Sin fechas, las de hoy |
 | `GET`   | `/doctor/citas/{id}/consulta`                                       | Paciente, antecedentes, historia clínica y `modo` de atención de una cita propia |
 | `PATCH` | `/doctor/citas/{id}/antecedentes`                                   | `{ alergias, antecedentes, medicacionHabitual }` |
 | `POST`  | `/doctor/atenciones/{id}/resultados`                                | `{ resultados: [{ tipoExamen, resultado, valorReferencia?, interpretacion? }] }`. Solo apoyo al diagnóstico; 409 si ya tiene |
 | `GET`   | `/doctor/documentos/{id}/descarga`                                  | Documento de un paciente que el doctor atiende |
-| `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, idHorarioNuevo, motivo }`                    |
-| `POST`  | `/doctor/solicitudes/derivacion`                                    | `{ idCita, establecimiento, especialidad, motivo }`     |
+| `POST`  | `/doctor/solicitudes/cambio-fecha`                                  | `{ idCita, motivo }`                                    |
+| `POST`  | `/doctor/solicitudes/derivacion`                                    | `{ idCita, establecimiento, especialidad, motivo, antecedentes, factoresRiesgo }`     |
 | `GET`   | `/doctor/solicitudes`                                               | Solicitudes enviadas por el doctor                      |
 | `POST`  | `/doctor/citas/{id}/atencion`                                       | `{ asistio, anamnesis?, examenFisico?, diagnostico, tratamiento, observaciones?, examenesRequeridos?, motivoClinico? }`. Los dos últimos campos emiten opcionalmente una orden |
 | `GET`   | `/doctor/tipos-documento`                                           | Tipos de documento médico                               |
@@ -286,7 +293,9 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
-| `GET`   | `/admin/solicitudes`                                                | Solicitudes pendientes                                  |
+| `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&secciones=...` | PDF administrativo con gráficos y hasta cinco consultas; las secciones se filtran con `RESUMEN`, `ESPECIALIDAD`, `DOCTORES`, `CAMBIOS`, `DERIVACIONES` |
+| `GET`   | `/admin/solicitudes`                                                | Todas las solicitudes con su estado e `idAtencion` cuando ya existe atención |
+| `GET`   | `/admin/solicitudes/{id}/referencia`                                | PDF de la derivación vinculada; solo administración activa |
 | `PATCH` | `/admin/solicitudes/{id}`                                           | `{ decision: APROBAR\|RECHAZAR, respuesta? }` (el motivo es obligatorio al rechazar). 409 si ya se respondió |
 | `GET`   | `/admin/tickets/{numero}`                                           | Cita del ticket y si puede pasar (`resultado`: `VALIDO`, `YA_VALIDADO`, `OTRO_DIA`, `NO_ACTIVA`) |
 | `POST`  | `/admin/tickets/{numero}/validacion`                                | Registra la llegada del paciente y avisa al doctor. 409 si el ticket no es válido hoy |

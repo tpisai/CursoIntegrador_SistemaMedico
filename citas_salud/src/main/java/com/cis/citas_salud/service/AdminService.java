@@ -8,6 +8,7 @@ import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.ResumenResponse;
 import com.cis.citas_salud.api.dto.AdminDto.SolicitudAdminResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Campania;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Consultorio;
@@ -16,10 +17,10 @@ import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.entity.Notificacion;
 import com.cis.citas_salud.entity.PersonalAdministrativo;
 import com.cis.citas_salud.entity.Solicitud;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CampaniaRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.PersonalAdministrativoRepository;
 import com.cis.citas_salud.repository.SolicitudRepository;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Panel de administración y recepción (pantalla 04): RF-13, RF-17 y RF-18. */
 @Service
@@ -46,24 +48,24 @@ public class AdminService {
     private final PersonalAdministrativoRepository personalRepository;
     private final CitaRepository citaRepository;
     private final SolicitudRepository solicitudRepository;
+    private final AtencionRepository atencionRepository;
     private final CampaniaRepository campaniaRepository;
     private final DoctorRepository doctorRepository;
-    private final HorarioRepository horarioRepository;
     private final HorarioGeneradorService horarioGenerador;
     private final NotificacionService notificacionService;
     private final ObjectMapper objectMapper;
 
     public AdminService(PersonalAdministrativoRepository personalRepository, CitaRepository citaRepository,
-                        SolicitudRepository solicitudRepository, CampaniaRepository campaniaRepository,
-                        DoctorRepository doctorRepository, HorarioRepository horarioRepository,
+                        SolicitudRepository solicitudRepository, AtencionRepository atencionRepository,
+                        CampaniaRepository campaniaRepository, DoctorRepository doctorRepository,
                         HorarioGeneradorService horarioGenerador, NotificacionService notificacionService,
                         ObjectMapper objectMapper) {
         this.personalRepository = personalRepository;
         this.citaRepository = citaRepository;
         this.solicitudRepository = solicitudRepository;
+        this.atencionRepository = atencionRepository;
         this.campaniaRepository = campaniaRepository;
         this.doctorRepository = doctorRepository;
-        this.horarioRepository = horarioRepository;
         this.horarioGenerador = horarioGenerador;
         this.notificacionService = notificacionService;
         this.objectMapper = objectMapper;
@@ -86,9 +88,14 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<SolicitudAdminResponse> solicitudesPendientes(UsuarioSesion sesion) {
+    public List<SolicitudAdminResponse> solicitudes(UsuarioSesion sesion) {
         personal(sesion);
-        return solicitudRepository.conEstado(Solicitud.PENDIENTE).stream().map(this::respuesta).toList();
+        List<Solicitud> solicitudes = solicitudRepository.recientes();
+        if (solicitudes.isEmpty()) return List.of();
+        List<Integer> citas = solicitudes.stream().map(s -> s.getCita().getIdCita()).distinct().toList();
+        Map<Integer, Integer> atencionPorCita = atencionRepository.findByCita_IdCitaIn(citas).stream()
+                .collect(Collectors.toMap(a -> a.getCita().getIdCita(), Atencion::getIdAtencion));
+        return solicitudes.stream().map(s -> respuesta(s, atencionPorCita.get(s.getCita().getIdCita()))).toList();
     }
 
     public SolicitudAdminResponse responder(UsuarioSesion sesion, Integer idSolicitud, ResponderSolicitudRequest datos) {
@@ -112,13 +119,23 @@ public class AdminService {
             notificacionService.crear(doctor.getUsuario(), Notificacion.SOLICITUD, "Solicitud rechazada",
                     "Administración rechazó " + queSePidio + ". Motivo: " + respuesta);
         } else {
-            if (!cita.estaActiva()) {
+            if (esCambio && !cita.estaActiva()) {
                 throw ApiException.conflicto("La cita ya no está activa (fue atendida o cancelada). Rechaza la solicitud.");
             }
-            Map<?, ?> detalle = objectMapper.readValue(solicitud.getDatosAdicionales(), Map.class);
+            if (!esCambio && (!Cita.ATENDIDA.equals(cita.getEstado())
+                    || !atencionRepository.existsByCita_IdCita(cita.getIdCita()))) {
+                throw ApiException.conflicto("Solo se puede aprobar una derivación después de registrar la atención.");
+            }
             if (esCambio) {
-                reprogramar(cita, ((Number) detalle.get("idHorarioNuevo")).intValue());
+                // El doctor ya no propone horario: el paciente elige después en su portal.
+                notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.SOLICITUD,
+                        "Tu cita necesita un nuevo horario",
+                        "El doctor no podrá atender tu cita del "
+                                + Formato.diaHora(cita.getHorario().getFecha(), cita.getHorario().getHoraInicio())
+                                + ". Ingresa a Mis citas para elegir un nuevo horario con el mismo doctor, "
+                                + "una cita con otro doctor o cancelar.");
             } else {
+                Map<?, ?> detalle = objectMapper.readValue(solicitud.getDatosAdicionales(), Map.class);
                 notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.SOLICITUD,
                         "Fuiste derivado a otro establecimiento",
                         "Tu médico te derivó a " + detalle.get("establecimiento") + " para " + detalle.get("especialidad")
@@ -126,34 +143,17 @@ public class AdminService {
             }
             solicitud.setEstado(APROBADA);
             notificacionService.crear(doctor.getUsuario(), Notificacion.SOLICITUD, "Solicitud aprobada",
-                    "Administración aprobó " + queSePidio + " y avisó al paciente.");
+                    esCambio
+                            ? "Administración aprobó el cambio de fecha de " + paciente + ". El paciente debe elegir el nuevo horario."
+                            : "Administración aprobó la derivación de " + paciente + " y avisó al paciente.");
         }
 
         solicitud.setRespuestaAdmin(respuesta);
         solicitud.setFechaRespuesta(LocalDateTime.now());
         solicitud.setIdPersonalRevisor(admin.getIdPersonalAdministrativo());
-        return respuesta(solicitud);
-    }
-
-    /** Mueve la cita al horario propuesto: el anterior queda libre y el nuevo, reservado. */
-    private void reprogramar(Cita cita, Integer idHorarioNuevo) {
-        Horario anterior = cita.getHorario();
-        List<Horario> bloqueados = horarioRepository.bloquearVarios(List.of(anterior.getIdHorario(), idHorarioNuevo));
-        Horario nuevo = bloqueados.stream().filter(h -> h.getIdHorario().equals(idHorarioNuevo)).findFirst()
-                .orElseThrow(() -> ApiException.conflicto("El horario propuesto ya no existe. Rechaza la solicitud."));
-        if (!nuevo.estaLibre(LocalDateTime.now())) {
-            throw ApiException.conflicto("El horario propuesto ya fue tomado por otro paciente. Rechaza la solicitud.");
-        }
-        String antes = Formato.diaHora(anterior.getFecha(), anterior.getHoraInicio());
-
-        anterior.setEstado(anterior.yaPaso(LocalDateTime.now()) ? Horario.FINALIZADO : Horario.DISPONIBLE);
-        nuevo.setEstado(Horario.RESERVADO);
-        cita.setHorario(nuevo);
-
-        notificacionService.crear(cita.getPaciente().getUsuario(), Notificacion.CITA, "Tu cita fue reprogramada",
-                "Tu cita de " + nuevo.getDoctor().getEspecialidad().getNombre() + " pasó del " + antes + " al "
-                        + Formato.diaHora(nuevo.getFecha(), nuevo.getHoraInicio()) + " en "
-                        + nuevo.getConsultorio().getUbicacion() + ". Tu ticket " + cita.getNumeroTicket() + " sigue siendo válido.");
+        Integer idAtencion = atencionRepository.findByCita_IdCita(solicitud.getCita().getIdCita())
+                .map(com.cis.citas_salud.entity.Atencion::getIdAtencion).orElse(null);
+        return respuesta(solicitud, idAtencion);
     }
 
     public CrearHorariosResponse crearHorarios(UsuarioSesion sesion, CrearHorariosRequest datos) {
@@ -194,7 +194,7 @@ public class AdminService {
                 .orElseThrow(() -> ApiException.prohibido("Tu cuenta no tiene un perfil de personal administrativo activo."));
     }
 
-    private SolicitudAdminResponse respuesta(Solicitud s) {
+    private SolicitudAdminResponse respuesta(Solicitud s, Integer idAtencion) {
         Cita cita = s.getCita();
         Horario h = cita.getHorario();
         Doctor d = s.getDoctor();
@@ -211,6 +211,7 @@ public class AdminService {
                 Formato.hora(h.getHoraInicio()),
                 DoctorService.detalleLegible(s, objectMapper),
                 s.getMotivo(),
-                s.getRespuestaAdmin());
+                s.getRespuestaAdmin(),
+                idAtencion);
     }
 }

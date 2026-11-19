@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Constancia del cambio de fecha de una cita: la solicitud del doctor, la respuesta de administración
+     y la decisión del paciente. La consulta SQL se ejecuta con la conexión de la aplicación:
+     ver SolicitudService. -->
+<jasperReport name="ConstanciaCambioFecha" language="java" pageWidth="595" pageHeight="842"
+              columnWidth="515" leftMargin="40" rightMargin="40" topMargin="40" bottomMargin="40"
+              whenNoDataType="AllSectionsNoDetail">
+    <parameter name="ID_SOLICITUD" class="java.lang.Integer"/>
+    <query language="sql"><![CDATA[WITH datos AS (
+  SELECT s.*, CASE WHEN s.datos_adicionales LIKE '{%' THEN s.datos_adicionales::jsonb END AS json
+  FROM solicitud s
+  WHERE s.id_solicitud = $P{ID_SOLICITUD}
+)
+SELECT s.id_solicitud,
+       CASE s.estado
+         WHEN 'APROBADA' THEN 'Pendiente de decisión del paciente'
+         WHEN 'RESUELTA' THEN 'Resuelta por decisión del paciente'
+         ELSE s.estado
+       END AS estado,
+       s.motivo, s.fecha_solicitud, s.fecha_respuesta,
+       COALESCE(NULLIF(TRIM(s.respuesta_admin), ''), 'Sin observaciones de administración.') AS respuesta_admin,
+       CONCAT(pu.nombres, ' ', pu.apellidos) AS paciente, pu.dni,
+       COALESCE(NULLIF(TRIM(s.json ->> 'doctorOriginal'), ''),
+                CONCAT(du.nombres, ' ', du.apellidos)) AS doctor,
+       COALESCE(d.cmp, '-') AS cmp,
+       e.nombre AS especialidad, c.numero_ticket,
+       COALESCE(s.json ->> 'fechaOriginal', TO_CHAR(h.fecha, 'YYYY-MM-DD')) AS fecha_original,
+       COALESCE(s.json ->> 'horaOriginal', TO_CHAR(h.hora_inicio, 'HH24:MI')) AS hora_original,
+       COALESCE(s.json ->> 'consultorioOriginal',
+                CASE WHEN co.zona IS NULL OR TRIM(co.zona) = '' THEN co.nombre
+                     ELSE co.zona || ' · ' || co.nombre END) AS consultorio_original,
+       s.json ->> 'decisionPaciente' AS decision,
+       CASE s.json ->> 'decisionPaciente'
+         WHEN 'MISMO_DOCTOR' THEN 'Nuevo horario con el mismo doctor'
+         WHEN 'OTRO_DOCTOR' THEN 'Nueva cita con otro doctor'
+         WHEN 'CANCELADA' THEN 'Canceló la cita'
+       END AS decision_legible,
+       s.json ->> 'nuevaFecha' AS nueva_fecha, s.json ->> 'nuevaHora' AS nueva_hora,
+       s.json ->> 'nuevoConsultorio' AS nuevo_consultorio, s.json ->> 'nuevoDoctor' AS nuevo_doctor,
+       s.json ->> 'nuevaEspecialidad' AS nueva_especialidad, s.json ->> 'nuevoTicket' AS nuevo_ticket,
+       s.json ->> 'fechaResolucion' AS fecha_resolucion
+FROM datos s
+JOIN cita c ON c.id_cita = s.id_cita
+JOIN horario h ON h.id_horario = c.id_horario
+JOIN consultorio co ON co.id_consultorio = h.id_consultorio
+JOIN paciente p ON p.id_paciente = c.id_paciente
+JOIN usuario pu ON pu.id_usuario = p.id_usuario
+JOIN doctor d ON d.id_doctor = s.id_doctor_solicitante
+JOIN usuario du ON du.id_usuario = d.id_usuario
+JOIN especialidad e ON e.id_especialidad = d.id_especialidad]]></query>
+    <field name="id_solicitud" class="java.lang.Integer"/>
+    <field name="estado" class="java.lang.String"/>
+    <field name="motivo" class="java.lang.String"/>
+    <field name="fecha_solicitud" class="java.sql.Timestamp"/>
+    <field name="fecha_respuesta" class="java.sql.Timestamp"/>
+    <field name="respuesta_admin" class="java.lang.String"/>
+    <field name="paciente" class="java.lang.String"/>
+    <field name="dni" class="java.lang.String"/>
+    <field name="doctor" class="java.lang.String"/>
+    <field name="cmp" class="java.lang.String"/>
+    <field name="especialidad" class="java.lang.String"/>
+    <field name="numero_ticket" class="java.lang.String"/>
+    <field name="fecha_original" class="java.lang.String"/>
+    <field name="hora_original" class="java.lang.String"/>
+    <field name="consultorio_original" class="java.lang.String"/>
+    <field name="decision" class="java.lang.String"/>
+    <field name="decision_legible" class="java.lang.String"/>
+    <field name="nueva_fecha" class="java.lang.String"/>
+    <field name="nueva_hora" class="java.lang.String"/>
+    <field name="nuevo_consultorio" class="java.lang.String"/>
+    <field name="nuevo_doctor" class="java.lang.String"/>
+    <field name="nueva_especialidad" class="java.lang.String"/>
+    <field name="nuevo_ticket" class="java.lang.String"/>
+    <field name="fecha_resolucion" class="java.lang.String"/>
+    <title height="66">
+        <element kind="staticText" x="0" y="0" width="515" height="16" fontSize="9.0" hTextAlign="Center">
+            <text><![CDATA[CENTRO DE SALUD MIGUEL GRAU]]></text>
+        </element>
+        <element kind="staticText" x="0" y="18" width="515" height="28" fontSize="17.0" bold="true" hTextAlign="Center" vTextAlign="Middle">
+            <text><![CDATA[Constancia de cambio de fecha de cita]]></text>
+        </element>
+        <element kind="textField" x="0" y="48" width="515" height="14" fontSize="9.0" hTextAlign="Center">
+            <expression><![CDATA["Solicitud N.º " + $F{id_solicitud}]]></expression>
+        </element>
+    </title>
+    <detail>
+        <band height="372" splitType="Stretch">
+            <element kind="textField" mode="Opaque" x="0" y="0" width="515" height="20" forecolor="#FFFFFF" backcolor="#1F4E79" fontSize="11.0" bold="true" vTextAlign="Middle">
+                <paragraph leftIndent="6"/>
+                <expression><![CDATA["SOLICITUD DE CAMBIO DE FECHA"]]></expression>
+            </element>
+            <element kind="textField" x="0" y="26" width="300" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["Paciente: " + $F{paciente}]]></expression>
+            </element>
+            <element kind="textField" x="320" y="26" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["DNI: " + $F{dni}]]></expression>
+            </element>
+            <element kind="textField" x="0" y="44" width="300" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Doctor(a) original: " + $F{doctor}]]></expression>
+            </element>
+            <element kind="textField" x="320" y="44" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["CMP: " + $F{cmp}]]></expression>
+            </element>
+            <element kind="textField" x="0" y="62" width="300" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Especialidad: " + $F{especialidad}]]></expression>
+            </element>
+            <element kind="textField" x="320" y="62" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["N.º de ticket: " + $F{numero_ticket}]]></expression>
+            </element>
+            <element kind="textField" x="0" y="80" width="300" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["Cita original: " + $F{fecha_original} + " · " + $F{hora_original}]]></expression>
+            </element>
+            <element kind="textField" x="320" y="80" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Consultorio: " + $F{consultorio_original}]]></expression>
+            </element>
+            <element kind="staticText" x="0" y="100" width="515" height="14" fontSize="9.0" bold="true">
+                <text><![CDATA[Motivo del cambio]]></text>
+            </element>
+            <element kind="textField" x="0" y="116" width="515" height="30" fontSize="10.0" textAdjust="StretchHeight" blankWhenNull="true">
+                <paragraph leftIndent="4" rightIndent="4"/>
+                <expression><![CDATA[$F{motivo}]]></expression>
+            </element>
+            <element kind="line" x="0" y="152" width="515" height="1" forecolor="#999999"/>
+            <element kind="textField" x="0" y="158" width="300" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Fecha de la solicitud: " + ($F{fecha_solicitud} == null ? "-" : new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format($F{fecha_solicitud}))]]></expression>
+            </element>
+            <element kind="textField" x="320" y="158" width="195" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["Estado: " + $F{estado}]]></expression>
+            </element>
+            <element kind="staticText" x="0" y="178" width="515" height="14" fontSize="9.0" bold="true">
+                <text><![CDATA[Respuesta de administración]]></text>
+            </element>
+            <element kind="textField" x="0" y="194" width="515" height="30" fontSize="10.0" textAdjust="StretchHeight" blankWhenNull="true">
+                <paragraph leftIndent="4" rightIndent="4"/>
+                <expression><![CDATA[$F{respuesta_admin} + ($F{fecha_respuesta} == null ? "" : " (" + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format($F{fecha_respuesta}) + ")")]]></expression>
+            </element>
+            <element kind="line" x="0" y="230" width="515" height="1" forecolor="#999999"/>
+
+            <element kind="textField" mode="Opaque" x="0" y="238" width="515" height="20" forecolor="#FFFFFF" backcolor="#1F4E79" fontSize="11.0" bold="true" vTextAlign="Middle">
+                <paragraph leftIndent="6"/>
+                <expression><![CDATA["RESPUESTA DEL PACIENTE"]]></expression>
+                <printWhenExpression><![CDATA[$F{decision} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="264" width="515" height="16" fontSize="10.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["Decisión: " + $F{decision_legible}]]></expression>
+                <printWhenExpression><![CDATA[$F{decision} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="282" width="300" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Nueva cita: " + $F{nueva_fecha} + " · " + $F{nueva_hora}]]></expression>
+                <printWhenExpression><![CDATA[$F{nueva_fecha} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="320" y="282" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Consultorio: " + $F{nuevo_consultorio}]]></expression>
+                <printWhenExpression><![CDATA[$F{nueva_fecha} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="300" width="300" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Doctor(a): " + $F{nuevo_doctor}]]></expression>
+                <printWhenExpression><![CDATA[$F{nueva_fecha} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="320" y="300" width="195" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Especialidad: " + $F{nueva_especialidad}]]></expression>
+                <printWhenExpression><![CDATA[$F{nueva_fecha} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="318" width="300" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["Nuevo ticket: " + $F{nuevo_ticket}]]></expression>
+                <printWhenExpression><![CDATA[$F{nuevo_ticket} != null]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="318" width="515" height="16" fontSize="9.0" bold="true" blankWhenNull="true">
+                <expression><![CDATA["La cita anterior quedó cancelada y el turno quedó libre."]]></expression>
+                <printWhenExpression><![CDATA["CANCELADA".equals($F{decision})]]></printWhenExpression>
+            </element>
+            <element kind="textField" x="0" y="336" width="515" height="16" fontSize="9.0" blankWhenNull="true">
+                <expression><![CDATA["Resuelto el: " + $F{fecha_resolucion}]]></expression>
+                <printWhenExpression><![CDATA[$F{decision} != null]]></printWhenExpression>
+            </element>
+        </band>
+    </detail>
+    <pageFooter height="22">
+        <element kind="textField" x="315" y="4" width="100" height="14" fontSize="8.0" hTextAlign="Right">
+            <expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de"]]></expression>
+        </element>
+        <element kind="textField" x="418" y="4" width="40" height="14" fontSize="8.0" evaluationTime="Report">
+            <expression><![CDATA[$V{PAGE_NUMBER}]]></expression>
+        </element>
+    </pageFooter>
+    <summary height="90">
+        <element kind="staticText" x="0" y="0" width="515" height="14" fontSize="8.0" hTextAlign="Center">
+            <text><![CDATA[Documento generado por el Sistema de Citas del Centro de Salud Miguel Grau.]]></text>
+        </element>
+        <element kind="line" x="280" y="50" width="235" height="1"/>
+        <element kind="textField" x="280" y="54" width="235" height="14" fontSize="9.0" bold="true" hTextAlign="Center" blankWhenNull="true">
+            <expression><![CDATA[$F{doctor}]]></expression>
+        </element>
+        <element kind="textField" x="280" y="68" width="235" height="12" fontSize="8.0" hTextAlign="Center" blankWhenNull="true">
+            <expression><![CDATA["Firma y sello - CMP " + $F{cmp}]]></expression>
+        </element>
+    </summary>
+</jasperReport>

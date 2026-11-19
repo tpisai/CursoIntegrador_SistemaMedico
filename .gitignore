@@ -2,6 +2,29 @@
 .env
 .env.*
 !.env.example
-
 # Respaldos de la base: contienen datos de pacientes.
 respaldos/
+
+# Estado y archivos locales del asistente; no forman parte del proyecto publicado.
+.atl/
+odd/
+AGENTS.md
+agents.md
+
+# Archivos temporales, de editor y del sistema: nunca se versionan.
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+~$*
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Artefactos de pruebas generados fuera de target/ (Surefire, JaCoCo, cobertura de JS).
+surefire-reports/
+coverage/
+*.exec
+*.tsbuildinfo

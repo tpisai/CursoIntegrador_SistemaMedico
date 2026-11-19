@@ -573,21 +573,14 @@ class DoctorServiceTest {
         });
     }
 
-    private Horario turnoLibre(Doctor dueno) {
-        Horario horario = DatosPrueba.horario(21, dueno, HOY.plusDays(10));
-        when(horarioRepository.findById(21)).thenReturn(Optional.of(horario));
-        return horario;
-    }
-
     private static CambioFechaRequest cambioFecha() {
-        return new CambioFechaRequest(ID_CITA, 21, "  Reunión clínica  ");
+        return new CambioFechaRequest(ID_CITA, "  Reunión clínica  ");
     }
 
     @Test
-    void solicitarCambioDeFechaGuardaElTurnoPropuestoYAvisaAAdministracion() {
+    void solicitarCambioDeFechaGuardaLaCitaOriginalYAvisaAAdministracion() {
         existeElDoctor();
         citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        Horario propuesto = turnoLibre(doctor);
         sinSolicitudPendiente(Solicitud.CAMBIO_HORARIO);
         solicitudSeGuardaConId();
         Usuario admin = DatosPrueba.usuario(1, UsuarioSesion.ADMINISTRADOR, "44556677");
@@ -599,43 +592,21 @@ class DoctorServiceTest {
         assertEquals(Solicitud.CAMBIO_HORARIO, respuesta.tipo());
         assertEquals(Solicitud.PENDIENTE, respuesta.estado());
         assertEquals("Reunión clínica", respuesta.motivo());
-        assertTrue(respuesta.detalle().startsWith("Nueva fecha: "));
+        assertTrue(respuesta.detalle().startsWith("Cambio solicitado: "));
 
         ArgumentCaptor<Solicitud> guardada = ArgumentCaptor.forClass(Solicitud.class);
         verify(solicitudRepository).save(guardada.capture());
-        assertTrue(guardada.getValue().getDatosAdicionales().contains("\"idHorarioNuevo\":21"));
-        // El turno sigue libre hasta que administración apruebe.
-        assertEquals(Horario.DISPONIBLE, propuesto.getEstado());
+        String datos = guardada.getValue().getDatosAdicionales();
+        assertTrue(datos.contains("\"fechaOriginal\""));
+        assertTrue(datos.contains("\"horaOriginal\""));
+        assertTrue(datos.contains("\"consultorioOriginal\""));
         verify(notificacionService).crear(eq(admin), eq(Notificacion.SOLICITUD), eq("Nueva solicitud por revisar"), anyString());
-    }
-
-    @Test
-    void cambioDeFechaHaciaUnTurnoOcupadoResponde409() {
-        existeElDoctor();
-        citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(doctor).setEstado(Horario.RESERVADO);
-
-        exigeError(HttpStatus.CONFLICT, () -> servicio.solicitarCambioFecha(sesion, cambioFecha()));
-
-        verify(solicitudRepository, never()).save(any());
-    }
-
-    @Test
-    void cambioDeFechaHaciaUnTurnoDeOtroDoctorResponde404() {
-        existeElDoctor();
-        citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(otroDoctor());
-
-        exigeError(HttpStatus.NOT_FOUND, () -> servicio.solicitarCambioFecha(sesion, cambioFecha()));
-
-        verify(solicitudRepository, never()).save(any());
     }
 
     @Test
     void cambioDeFechaYaPendienteResponde409() {
         existeElDoctor();
         citaDe(doctor, HOY.plusDays(5), Cita.CONFIRMADA);
-        turnoLibre(doctor);
         when(solicitudRepository.existsByCita_IdCitaAndTipoAndEstado(ID_CITA, Solicitud.CAMBIO_HORARIO, Solicitud.PENDIENTE))
                 .thenReturn(true);
 
@@ -645,31 +616,80 @@ class DoctorServiceTest {
     }
 
     @Test
+    void listaParaDerivarSoloCitasAtendidasConAtencionDelDoctor() {
+        existeElDoctor();
+        Cita cita = DatosPrueba.cita(ID_CITA, paciente, DatosPrueba.horario(5, doctor, HOY), Cita.ATENDIDA);
+        Atencion atencion = new Atencion();
+        atencion.setCita(cita);
+        when(atencionRepository.findByDoctor_IdDoctorAndCita_EstadoOrderByFechaAtencionDesc(doctor.getIdDoctor(), Cita.ATENDIDA))
+                .thenReturn(List.of(atencion));
+
+        var atendidas = servicio.citasAtendidas(sesion);
+
+        assertEquals(1, atendidas.size());
+        assertEquals(ID_CITA, atendidas.get(0).idCita());
+        assertEquals(Cita.ATENDIDA, atendidas.get(0).estado());
+    }
+
+    @Test
     void derivarGuardaElDestinoLegible() {
         existeElDoctor();
-        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(ID_CITA)).thenReturn(true);
         sinSolicitudPendiente(Solicitud.DERIVACION);
         solicitudSeGuardaConId();
         when(usuarioRepository.findByRol_NombreAndEstado("ADMINISTRADOR", "ACTIVO")).thenReturn(List.of());
 
         SolicitudResponse respuesta = servicio.derivar(sesion,
-                new DerivacionRequest(ID_CITA, " Hospital de Chosica ", " Cardiología ", "Soplo cardíaco"));
+                new DerivacionRequest(ID_CITA, " Hospital de Chosica ", " Cardiología ", "Soplo cardíaco",
+                        "Antecedentes familiares cardiovasculares", "Tabaquismo"));
 
         assertEquals(Solicitud.DERIVACION, respuesta.tipo());
         assertEquals("Hospital de Chosica · Cardiología", respuesta.detalle());
+        ArgumentCaptor<Solicitud> guardada = ArgumentCaptor.forClass(Solicitud.class);
+        verify(solicitudRepository).save(guardada.capture());
+        String datos = guardada.getValue().getDatosAdicionales();
+        assertTrue(datos.contains("\"establecimiento\":\"Hospital de Chosica\""));
+        assertTrue(datos.contains("\"especialidad\":\"Cardiología\""));
+        assertTrue(datos.contains("\"antecedentes\":\"Antecedentes familiares cardiovasculares\""));
+        assertTrue(datos.contains("\"factoresRiesgo\":\"Tabaquismo\""));
+        assertEquals("Soplo cardíaco", guardada.getValue().getMotivo());
         verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Derivación enviada a administración"), anyString());
     }
 
     @Test
-    void derivacionYaPendienteResponde409() {
+    void derivarCitaSinAtenderResponde409() {
         existeElDoctor();
         citaDe(doctor, HOY, Cita.CONFIRMADA);
+
+        exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
+
+        verify(solicitudRepository, never()).save(any());
+    }
+
+    @Test
+    void derivarCitaAtendidaSinRegistroDeAtencionResponde409() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+
+        exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
+
+        verify(solicitudRepository, never()).save(any());
+    }
+
+    @Test
+    void derivacionYaPendienteResponde409() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(ID_CITA)).thenReturn(true);
         when(solicitudRepository.existsByCita_IdCitaAndTipoAndEstado(ID_CITA, Solicitud.DERIVACION, Solicitud.PENDIENTE))
                 .thenReturn(true);
 
         exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
-                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo")));
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
 
         verify(solicitudRepository, never()).save(any());
     }

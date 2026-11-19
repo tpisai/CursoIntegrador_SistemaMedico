@@ -11,45 +11,58 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { CampoSelect } from "@/components/portal/campo-select"
 import { ESPECIALIDADES_DERIVACION, ESTABLECIMIENTOS } from "@/components/doctor/opciones-derivacion"
-import { useCitasProximas } from "@/hooks/use-doctor"
+import { useCitasAtendidas } from "@/hooks/use-doctor"
 import { rutasDoctor, solicitarDerivacion } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import { RUTA_NOTIFICACIONES } from "@/lib/api/notificaciones"
 import { formatDiaCorto } from "@/lib/format"
 
-type Errores = Partial<Record<"cita" | "establecimiento" | "especialidad" | "motivo", string>>
+type Errores = Partial<Record<"cita" | "establecimiento" | "especialidad" | "motivo" | "antecedentes" | "factoresRiesgo", string>>
 
 const aOpciones = (lista: string[]) => lista.map((texto) => ({ valor: texto, texto }))
 
 // RF-16: orden de derivación; administración procesa el traslado y notifica al paciente (RF-18).
 export function DerivacionCard() {
   const { mutate } = useSWRConfig()
-  const citas = useCitasProximas()
+  const citas = useCitasAtendidas()
   const [idCita, setIdCita] = useState("")
   const [establecimiento, setEstablecimiento] = useState("")
   const [especialidad, setEspecialidad] = useState("")
   const [motivo, setMotivo] = useState("")
+  const [antecedentes, setAntecedentes] = useState("")
+  const [factoresRiesgo, setFactoresRiesgo] = useState("")
   const [errores, setErrores] = useState<Errores>({})
   const [enviando, startTransition] = useTransition()
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nuevos: Errores = {}
-    if (!idCita) nuevos.cita = "Elige al paciente."
+    if (!idCita) nuevos.cita = "Elige una cita atendida."
     if (!establecimiento) nuevos.establecimiento = "Elige el establecimiento de destino."
     if (!especialidad) nuevos.especialidad = "Elige la especialidad requerida."
     if (motivo.trim().length < 5) nuevos.motivo = "Explica brevemente el motivo de la derivación."
+    if (!antecedentes.trim()) nuevos.antecedentes = "Describe los antecedentes relevantes."
+    if (!factoresRiesgo.trim()) nuevos.factoresRiesgo = "Describe los factores de riesgo."
     setErrores(nuevos)
     if (Object.keys(nuevos).length) return
 
     startTransition(async () => {
       try {
-        await solicitarDerivacion({ idCita: Number(idCita), establecimiento, especialidad, motivo: motivo.trim() })
+        await solicitarDerivacion({
+          idCita: Number(idCita),
+          establecimiento,
+          especialidad,
+          motivo: motivo.trim(),
+          antecedentes: antecedentes.trim(),
+          factoresRiesgo: factoresRiesgo.trim(),
+        })
         toast.success("Derivación enviada a administración.")
         setIdCita("")
         setEstablecimiento("")
         setEspecialidad("")
         setMotivo("")
+        setAntecedentes("")
+        setFactoresRiesgo("")
         await Promise.all([mutate(rutasDoctor.solicitudes), mutate(RUTA_NOTIFICACIONES)])
       } catch (error) {
         toast.error(mensajeDeError(error))
@@ -62,7 +75,7 @@ export function DerivacionCard() {
       <CardHeader>
         <CardTitle className="font-semibold">Derivar paciente a otro hospital</CardTitle>
         <CardDescription>
-          Genera la orden de derivación; administración procesa el traslado y notifica al paciente.
+          Solo puedes solicitar una derivación para una cita con atención registrada. Administración procesa el traslado y notifica al paciente.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,9 +83,9 @@ export function DerivacionCard() {
           <FieldGroup className="gap-4">
             <CampoSelect
               id="derivar-paciente"
-              etiqueta="Paciente"
-              placeholder="Elige un paciente"
-              vacio="No tienes pacientes con citas activas"
+              etiqueta="Cita atendida"
+              placeholder="Elige una cita atendida"
+              vacio="No tienes citas atendidas con atención registrada"
               opciones={citas.data?.map((c) => ({
                 valor: String(c.idCita),
                 texto: `${c.paciente} · DNI ${c.dniPaciente} · ${formatDiaCorto(c.fecha)}`,
@@ -110,6 +123,30 @@ export function DerivacionCard() {
                 onChange={(e) => setMotivo(e.target.value)}
               />
               <FieldError>{errores.motivo}</FieldError>
+            </Field>
+            <Field data-invalid={!!errores.antecedentes}>
+              <FieldLabel htmlFor="derivar-antecedentes">Antecedentes relevantes</FieldLabel>
+              <Textarea
+                id="derivar-antecedentes"
+                placeholder="Antecedentes personales y clínicos relacionados con la derivación…"
+                value={antecedentes}
+                maxLength={1000}
+                aria-invalid={!!errores.antecedentes}
+                onChange={(e) => setAntecedentes(e.target.value)}
+              />
+              <FieldError>{errores.antecedentes}</FieldError>
+            </Field>
+            <Field data-invalid={!!errores.factoresRiesgo}>
+              <FieldLabel htmlFor="derivar-factores-riesgo">Factores de riesgo</FieldLabel>
+              <Textarea
+                id="derivar-factores-riesgo"
+                placeholder="Factores de riesgo relevantes para la evaluación…"
+                value={factoresRiesgo}
+                maxLength={1000}
+                aria-invalid={!!errores.factoresRiesgo}
+                onChange={(e) => setFactoresRiesgo(e.target.value)}
+              />
+              <FieldError>{errores.factoresRiesgo}</FieldError>
             </Field>
             <Button type="submit" size="xl" variant="soft" className="w-full" disabled={enviando}>
               {enviando ? <Spinner data-icon="inline-start" /> : null}

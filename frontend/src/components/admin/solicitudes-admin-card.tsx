@@ -1,26 +1,33 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRightIcon, CircleAlertIcon, InboxIcon } from "lucide-react"
+import { CircleAlertIcon, DownloadIcon, InboxIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { type Respuesta, ResponderSolicitudDialog } from "@/components/admin/responder-solicitud-dialog"
-import { useSolicitudesPendientes } from "@/hooks/use-admin"
+import { BotonConstanciaCambio, tieneConstanciaCambio } from "@/components/citas/boton-constancia-cambio"
+import { EstadoSolicitudBadge } from "@/components/citas/estado-cita-badge"
+import { useSolicitudesAdmin } from "@/hooks/use-admin"
+import { descargarReferenciaSolicitud } from "@/lib/api/admin"
 import { mensajeDeError } from "@/lib/api/http"
 import type { TipoSolicitud } from "@/lib/api/types"
+import { guardarArchivo } from "@/lib/descargar"
 import { formatDiaHora } from "@/lib/format"
 
 const TEXTOS: Record<TipoSolicitud, { titulo: string; descripcion: string; vacio: string; aprobar: string }> = {
   CAMBIO_HORARIO: {
     titulo: "Solicitudes de cambio de fecha",
-    descripcion: "Al aprobar una solicitud, el paciente recibe una alerta automática sobre la modificación de su cita.",
+    descripcion:
+      "Al aprobar, el paciente elige el nuevo horario en su portal; la constancia queda disponible para descargar.",
     vacio: "No hay cambios de fecha por revisar.",
-    aprobar: "Aprobar y alertar al paciente",
+    aprobar: "Aprobar y avisar al paciente",
   },
   DERIVACION: {
     titulo: "Solicitudes de derivación",
@@ -31,10 +38,22 @@ const TEXTOS: Record<TipoSolicitud, { titulo: string; descripcion: string; vacio
 }
 
 export function SolicitudesAdminCard({ tipo }: { tipo: TipoSolicitud }) {
-  const { data, error, isLoading } = useSolicitudesPendientes()
+  const { data, error, isLoading } = useSolicitudesAdmin()
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null)
+  const [descargandoReferencia, setDescargandoReferencia] = useState<number | null>(null)
   const solicitudes = data?.filter((s) => s.tipo === tipo)
   const textos = TEXTOS[tipo]
+
+  async function descargarReferencia(idSolicitud: number, idAtencion: number) {
+    setDescargandoReferencia(idSolicitud)
+    try {
+      guardarArchivo(await descargarReferenciaSolicitud(idSolicitud), `referencia-${idAtencion}.pdf`)
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoReferencia(null)
+    }
+  }
 
   return (
     <Card>
@@ -67,28 +86,58 @@ export function SolicitudesAdminCard({ tipo }: { tipo: TipoSolicitud }) {
                 {i > 0 ? <Separator /> : null}
                 <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 flex-col gap-1 text-sm">
-                    <span className="font-semibold">
+                    <span className="flex flex-wrap items-center gap-2 font-semibold">
                       {s.doctor} · {s.especialidad}
+                      <EstadoSolicitudBadge estado={s.estado} />
                     </span>
-                    <span className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                    <span className="text-muted-foreground">
                       {s.paciente} (DNI {s.dniPaciente}) · {formatDiaHora(s.fechaCita, s.horaCita)}
-                      <ArrowRightIcon className="size-3.5" aria-hidden="true" />
-                      <span className="sr-only">propuesta:</span>
-                      <span className="font-medium text-foreground">{s.detalle?.replace("Nueva fecha: ", "")}</span>
                     </span>
+                    {s.detalle ? <span className="text-xs text-muted-foreground">{s.detalle}</span> : null}
                     <span className="text-xs text-muted-foreground">Motivo: {s.motivo}</span>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button size="sm" onClick={() => setRespuesta({ solicitud: s, decision: "APROBAR", abierto: true })}>
-                      {textos.aprobar}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setRespuesta({ solicitud: s, decision: "RECHAZAR", abierto: true })}
-                    >
-                      Rechazar
-                    </Button>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {s.estado === "PENDIENTE" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => setRespuesta({ solicitud: s, decision: "APROBAR", abierto: true })}
+                        >
+                          {textos.aprobar}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setRespuesta({ solicitud: s, decision: "RECHAZAR", abierto: true })}
+                        >
+                          Rechazar
+                        </Button>
+                      </>
+                    ) : tieneConstanciaCambio(s.tipo, s.estado) ? (
+                      <BotonConstanciaCambio idSolicitud={s.idSolicitud} />
+                    ) : null}
+                    {tipo === "DERIVACION" && s.idAtencion !== null ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={descargandoReferencia === s.idSolicitud}
+                        onClick={() => {
+                          if (s.idAtencion !== null) void descargarReferencia(s.idSolicitud, s.idAtencion)
+                        }}
+                      >
+                        {descargandoReferencia === s.idSolicitud ? (
+                          <Spinner className="mr-1.5 size-4" />
+                        ) : (
+                          <DownloadIcon className="mr-1.5 size-4" />
+                        )}
+                        Descargar referencia PDF
+                      </Button>
+                    ) : null}
+                    {tipo === "DERIVACION" && s.idAtencion === null ? (
+                      <span className="text-xs text-muted-foreground">
+                        La referencia estará disponible cuando se registre la atención.
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </li>

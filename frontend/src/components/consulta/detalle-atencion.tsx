@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { type DocumentoClinico, descargarDocumentoClinico, descargarDocumentoDePaciente } from "@/lib/api/consulta"
-import { descargarReceta } from "@/lib/api/doctor"
+import { descargarOrdenExamen, descargarReceta } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import type { AtencionPrevia, MedicamentoRecetado } from "@/lib/api/types"
 import { guardarArchivo } from "@/lib/descargar"
@@ -51,6 +51,8 @@ export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
     atencion.propia && !esExamen
       ? DOCUMENTOS_CLINICOS.filter((d) => d.documento !== "referencia" || atencion.tieneDerivacion)
       : []
+  // La orden de exámenes se imprime junto a la ficha y el informe de la misma consulta.
+  const mostrarOrdenExamen = atencion.propia && !esExamen && atencion.tieneOrdenExamen
 
   async function descargar(clave: string, obtener: () => Promise<Blob>, nombre: string) {
     setDescargando(clave)
@@ -129,7 +131,7 @@ export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
         </div>
       ) : null}
 
-      {documentosClinicos.length ? (
+      {documentosClinicos.length || mostrarOrdenExamen ? (
         <div className="flex flex-col gap-2">
           <h4 className="text-sm font-medium text-muted-foreground">Documentos para imprimir</h4>
           <div className="flex flex-wrap gap-2">
@@ -152,6 +154,24 @@ export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
                 <span className="sr-only"> en PDF</span>
               </Button>
             ))}
+            {mostrarOrdenExamen ? (
+              <Button
+                variant="outline"
+                className="h-11"
+                disabled={descargando === "orden"}
+                onClick={() =>
+                  descargar(
+                    "orden",
+                    () => descargarOrdenExamen(atencion.idAtencion),
+                    `orden-examenes-${atencion.idAtencion}.pdf`
+                  )
+                }
+              >
+                {descargando === "orden" ? <Spinner data-icon="inline-start" /> : <DownloadIcon data-icon="inline-start" />}
+                Orden de exámenes
+                <span className="sr-only"> en PDF</span>
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}

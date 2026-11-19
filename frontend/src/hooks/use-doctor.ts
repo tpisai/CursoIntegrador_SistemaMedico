@@ -3,7 +3,7 @@
 import useSWR from "swr"
 
 import { rutasDoctor } from "@/lib/api/doctor"
-import type { CitaAsignada, HorarioLibre, Solicitud } from "@/lib/api/types"
+import type { CitaAsignada, Solicitud } from "@/lib/api/types"
 
 // La agenda se refresca sola para ver las reservas nuevas de los pacientes.
 const AGENDA = { refreshInterval: 30_000, revalidateOnFocus: true }
@@ -16,8 +16,8 @@ export function useCitasProximas() {
   return useSWR<CitaAsignada[]>(rutasDoctor.citasProximas, AGENDA)
 }
 
-export function useHorariosLibres() {
-  return useSWR<HorarioLibre[]>(rutasDoctor.horariosLibres)
+export function useCitasAtendidas() {
+  return useSWR<CitaAsignada[]>(rutasDoctor.citasAtendidas, AGENDA)
 }
 
 export function useSolicitudes() {

@@ -36,13 +36,15 @@ public class CitaService {
     private final NotificacionService notificacionService;
     private final Path carpetaArchivos;
     private final AtencionRepository atencionRepository;
+    private final ReporteClinicoRepository reporteClinicoRepository;
     private final RecetaMedicaService recetaMedicaService;
     private final OrdenExamenRepository ordenExamenRepository;
     private final OrdenExamenService ordenExamenService;
 
     public CitaService(CitaRepository citaRepository, HorarioRepository horarioRepository,
                        PacienteRepository pacienteRepository, DocumentoMedicoRepository documentoRepository,
-                       NotificacionService notificacionService, AtencionRepository atencionRepository, RecetaMedicaService recetaMedicaService,
+                       NotificacionService notificacionService, AtencionRepository atencionRepository,
+                       ReporteClinicoRepository reporteClinicoRepository, RecetaMedicaService recetaMedicaService,
                        OrdenExamenRepository ordenExamenRepository, OrdenExamenService ordenExamenService,
                        @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.citaRepository = citaRepository;
@@ -51,6 +53,7 @@ public class CitaService {
         this.documentoRepository = documentoRepository;
         this.notificacionService = notificacionService;
         this.atencionRepository = atencionRepository;
+        this.reporteClinicoRepository = reporteClinicoRepository;
         this.recetaMedicaService = recetaMedicaService;
         this.ordenExamenRepository = ordenExamenRepository;
         this.ordenExamenService = ordenExamenService;
@@ -107,15 +110,9 @@ public class CitaService {
         Cita cita = citaDelPaciente(sesion, idCita);
         if (!cita.estaActiva()) throw ApiException.conflicto("Esta cita ya no se puede cancelar.");
 
-        cita.setEstado(Cita.CANCELADA);
         Horario horario = cita.getHorario();
-        horario.setEstado(Horario.CANCELADO);
-        // cita.id_horario es UNIQUE: el horario queda con la cita cancelada y se abre uno nuevo para el mismo turno.
         boolean turnoLibre = !horario.yaPaso(LocalDateTime.now());
-        if (turnoLibre) {
-            horarioRepository.save(new Horario(horario.getDoctor(), horario.getConsultorio(), horario.getFecha(),
-                    horario.getHoraInicio(), horario.getHoraFin()));
-        }
+        cancelarCita(cita);
 
         notificacionService.crear(horario.getDoctor().getUsuario(), Notificacion.CITA,
                 "Cita cancelada por el paciente",
@@ -123,6 +120,18 @@ public class CitaService {
                         + Formato.diaHora(horario.getFecha(), horario.getHoraInicio())
                         + (turnoLibre ? ". El turno quedó libre." : "."));
         return respuesta(cita);
+    }
+
+    /** Cancela la cita y su turno; si el turno todavía no pasó, abre una fila nueva para volver a ofrecerlo. */
+    void cancelarCita(Cita cita) {
+        cita.setEstado(Cita.CANCELADA);
+        Horario horario = cita.getHorario();
+        horario.setEstado(Horario.CANCELADO);
+        // cita.id_horario es UNIQUE: el horario queda con la cita cancelada y se abre uno nuevo para el mismo turno.
+        if (!horario.yaPaso(LocalDateTime.now())) {
+            horarioRepository.save(new Horario(horario.getDoctor(), horario.getConsultorio(), horario.getFecha(),
+                    horario.getHoraInicio(), horario.getHoraFin()));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -151,18 +160,29 @@ public class CitaService {
     @Transactional(readOnly = true)
     public List<AtencionHistorialResponse> historial(UsuarioSesion sesion) {
         List<Cita> citas = citaRepository.historialDelPaciente(paciente(sesion).getIdPaciente(), Cita.CERRADAS);
+        List<Integer> idsCita = citas.stream().map(Cita::getIdCita).toList();
         Set<Integer> citasConOrden = citas.isEmpty()
                 ? Set.of()
-                : Set.copyOf(ordenExamenRepository.findCitasConOrden(
-                        citas.stream().map(Cita::getIdCita).toList()));
+                : Set.copyOf(ordenExamenRepository.findCitasConOrden(idsCita));
+        List<Atencion> atenciones = citas.isEmpty() ? List.of() : atencionRepository.findByCita_IdCitaIn(idsCita);
+        var atencionPorCita = atenciones.stream().collect(java.util.stream.Collectors.toMap(
+                a -> a.getCita().getIdCita(), Atencion::getIdAtencion));
+        Set<Integer> atencionesConDerivacion = atenciones.isEmpty()
+                ? Set.of()
+                : Set.copyOf(reporteClinicoRepository.conDerivacion(atenciones.stream().map(Atencion::getIdAtencion).toList()));
         return citas.stream()
-                .map(c -> new AtencionHistorialResponse(
-                        c.getIdCita(),
-                        Formato.fecha(c.getHorario().getFecha()),
-                        c.getHorario().getDoctor().getEspecialidad().getNombre(),
-                        c.getHorario().getDoctor().getUsuario().getNombreCorto(),
-                        c.getEstado(),
-                        citasConOrden.contains(c.getIdCita())))
+                .map(c -> {
+                    Integer idAtencion = atencionPorCita.get(c.getIdCita());
+                    return new AtencionHistorialResponse(
+                            c.getIdCita(),
+                            idAtencion,
+                            Formato.fecha(c.getHorario().getFecha()),
+                            c.getHorario().getDoctor().getEspecialidad().getNombre(),
+                            c.getHorario().getDoctor().getUsuario().getNombreCorto(),
+                            c.getEstado(),
+                            citasConOrden.contains(c.getIdCita()),
+                            idAtencion != null && atencionesConDerivacion.contains(idAtencion));
+                })
                 .toList();
     }
 

@@ -31,7 +31,6 @@ public final class DoctorDto {
 
     public record CambioFechaRequest(
             @NotNull(message = "Elige la cita que quieres cambiar.") Integer idCita,
-            @NotNull(message = "Elige la nueva fecha propuesta.") Integer idHorarioNuevo,
             @NotBlank(message = "Escribe el motivo del cambio.") @Size(max = 500, message = "El motivo es demasiado largo.") String motivo) {
     }
 
@@ -39,7 +38,9 @@ public final class DoctorDto {
             @NotNull(message = "Elige al paciente.") Integer idCita,
             @NotBlank(message = "Elige el establecimiento de destino.") @Size(max = 150) String establecimiento,
             @NotBlank(message = "Elige la especialidad requerida.") @Size(max = 100) String especialidad,
-            @NotBlank(message = "Escribe el motivo de la derivación.") @Size(max = 500, message = "El motivo es demasiado largo.") String motivo) {
+            @NotBlank(message = "Escribe el motivo de la derivación.") @Size(max = 500, message = "El motivo es demasiado largo.") String motivo,
+            @NotBlank(message = "Describe los antecedentes relevantes.") @Size(max = 1000, message = "Los antecedentes son demasiado largos.") String antecedentes,
+            @NotBlank(message = "Describe los factores de riesgo.") @Size(max = 1000, message = "Los factores de riesgo son demasiado largos.") String factoresRiesgo) {
     }
 
     public record SolicitudResponse(

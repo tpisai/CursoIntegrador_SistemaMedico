@@ -90,7 +90,7 @@ export function ResponderSolicitudDialog({ respuesta, onCerrar }: { respuesta: R
                 <Alert variant="brand">
                   <AlertDescription>
                     {esCambio
-                      ? "La cita se moverá a la nueva fecha y el paciente recibirá una alerta automática."
+                      ? "El paciente recibirá una alerta para elegir el nuevo horario en su portal."
                       : "El paciente recibirá un aviso para recoger su hoja de referencia en admisión."}
                   </AlertDescription>
                 </Alert>
@@ -126,7 +126,7 @@ export function ResponderSolicitudDialog({ respuesta, onCerrar }: { respuesta: R
               </Button>
               <Button type="submit" size="lg" variant={aprobar ? "default" : "destructive"} disabled={enviando}>
                 {enviando ? <Spinner data-icon="inline-start" /> : null}
-                {aprobar ? "Aprobar y alertar al paciente" : "Rechazar solicitud"}
+                {aprobar ? "Aprobar y avisar al paciente" : "Rechazar solicitud"}
               </Button>
             </div>
           </form>

@@ -65,6 +65,8 @@ public final class ConsultaDto {
             boolean propia,
             // La cita tiene una solicitud de derivación: se puede emitir la referencia.
             boolean tieneDerivacion,
+            // La atención emitió una orden de exámenes: el doctor puede descargarla.
+            boolean tieneOrdenExamen,
             String anamnesis,
             String examenFisico,
             String diagnostico,

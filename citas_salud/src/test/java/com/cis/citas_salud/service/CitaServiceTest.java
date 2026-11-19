@@ -17,6 +17,7 @@ import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.OrdenExamenRepository;
 import com.cis.citas_salud.repository.PacienteRepository;
+import com.cis.citas_salud.repository.ReporteClinicoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +67,8 @@ class CitaServiceTest {
     @Mock
     private AtencionRepository atencionRepository;
     @Mock
+    private ReporteClinicoRepository reporteClinicoRepository;
+    @Mock
     private RecetaMedicaService recetaMedicaService;
     @Mock
     private OrdenExamenRepository ordenExamenRepository;
@@ -80,8 +83,8 @@ class CitaServiceTest {
     @BeforeEach
     void preparar() {
         servicio = new CitaService(citaRepository, horarioRepository, pacienteRepository, documentoRepository,
-                notificacionService, atencionRepository, recetaMedicaService, ordenExamenRepository,
-                ordenExamenService, "archivos");
+                notificacionService, atencionRepository, reporteClinicoRepository, recetaMedicaService,
+                ordenExamenRepository, ordenExamenService, "archivos");
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
     }
@@ -370,12 +373,21 @@ class CitaServiceTest {
         Cita sinOrden = DatosPrueba.cita(34, paciente, DatosPrueba.horario(6, doctor, AYER), Cita.ATENDIDA);
         when(citaRepository.historialDelPaciente(1, Cita.CERRADAS)).thenReturn(List.of(conOrden, sinOrden));
         when(ordenExamenRepository.findCitasConOrden(List.of(33, 34))).thenReturn(List.of(33));
+        Atencion atencion = new Atencion();
+        atencion.setIdAtencion(90);
+        atencion.setCita(conOrden);
+        when(atencionRepository.findByCita_IdCitaIn(List.of(33, 34))).thenReturn(List.of(atencion));
+        when(reporteClinicoRepository.conDerivacion(List.of(90))).thenReturn(List.of(90));
 
         var historial = servicio.historial(sesion);
 
         assertEquals(2, historial.size());
         assertTrue(historial.get(0).tieneOrdenExamen());
         assertEquals(false, historial.get(1).tieneOrdenExamen());
+        assertEquals(90, historial.get(0).idAtencion());
+        assertTrue(historial.get(0).tieneDerivacion());
+        assertNull(historial.get(1).idAtencion());
+        assertEquals(false, historial.get(1).tieneDerivacion());
     }
 
     @Test
@@ -385,7 +397,7 @@ class CitaServiceTest {
 
         assertTrue(servicio.historial(sesion).isEmpty());
 
-        verifyNoInteractions(ordenExamenRepository);
+        verifyNoInteractions(ordenExamenRepository, atencionRepository, reporteClinicoRepository);
     }
 
     // ----- Confirmar asistencia (EDT 4.12) -----

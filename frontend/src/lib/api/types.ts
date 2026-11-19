@@ -128,6 +128,8 @@ export interface ReservarCitaRequest {
 
 export interface AtencionHistorial {
   idCita: number
+  idAtencion: number | null
+  tieneDerivacion: boolean
   fecha: string
   especialidad: string
   doctor: string
@@ -158,16 +160,8 @@ export interface CitaAsignada {
   consultorio: string
 }
 
-export interface HorarioLibre {
-  idHorario: number
-  fecha: string
-  horaInicio: string
-  consultorio: string
-}
-
 export interface CambioFechaRequest {
   idCita: number
-  idHorarioNuevo: number
   motivo: string
 }
 
@@ -176,10 +170,12 @@ export interface DerivacionRequest {
   establecimiento: string
   especialidad: string
   motivo: string
+  antecedentes: string
+  factoresRiesgo: string
 }
 
 export type TipoSolicitud = "CAMBIO_HORARIO" | "DERIVACION"
-export type EstadoSolicitud = "PENDIENTE" | "EN_REVISION" | "APROBADA" | "RECHAZADA"
+export type EstadoSolicitud = "PENDIENTE" | "EN_REVISION" | "APROBADA" | "RECHAZADA" | "RESUELTA"
 
 export interface Solicitud {
   idSolicitud: number
@@ -227,6 +223,59 @@ export interface AtencionRegistrada {
   idAtencion: number | null
 }
 
+// --- Portal del paciente: cambios de fecha (RF-17) ---
+
+export type DecisionCambio = "MISMO_DOCTOR" | "OTRO_DOCTOR" | "CANCELADA"
+
+export interface ResolverCambioRequest {
+  decision: DecisionCambio
+  // Obligatorio para MISMO_DOCTOR y OTRO_DOCTOR.
+  idHorarioNuevo?: number
+}
+
+/** Cambio de fecha aprobado que espera la decisión del paciente. */
+export interface CambioPendiente {
+  idSolicitud: number
+  idCita: number
+  idDoctor: number
+  idEspecialidad: number
+  idConsultorio: number
+  doctor: string
+  especialidad: string
+  // Cita original: "YYYY-MM-DD" y "HH:mm".
+  fecha: string
+  hora: string
+  consultorio: string
+  motivo: string
+  fechaSolicitud: string
+  respuestaAdmin: string | null
+}
+
+export interface CambioPaciente {
+  idSolicitud: number
+  estado: EstadoSolicitud
+  fechaSolicitud: string
+  fechaCita: string
+  horaCita: string
+  // "Cambio al …" o "Cambio solicitado: …"
+  detalle: string | null
+  motivo: string
+  respuestaAdmin: string | null
+  // Solo cuando administración aprobó la solicitud.
+  constanciaDisponible: boolean
+}
+
+export interface ResolucionCambio {
+  idSolicitud: number
+  estado: EstadoSolicitud
+  decision: DecisionCambio
+  // Mensaje listo para mostrar al paciente.
+  mensaje: string
+  // Cita nueva cuando eligió otro doctor.
+  idCitaNueva: number | null
+  numeroTicket: string | null
+}
+
 // --- Panel de administración ---
 
 export interface ResumenAdmin {
@@ -251,6 +300,7 @@ export interface SolicitudAdmin {
   detalle: string | null
   motivo: string
   respuestaAdmin: string | null
+  idAtencion: number | null
 }
 
 export interface ResponderSolicitudRequest {
@@ -417,6 +467,8 @@ export interface AtencionPrevia {
   propia: boolean
   // La cita tiene una solicitud de derivación: se puede emitir la referencia.
   tieneDerivacion: boolean
+  // La atención emitió una orden de exámenes: el doctor puede descargarla.
+  tieneOrdenExamen: boolean
   anamnesis: string | null
   examenFisico: string | null
   diagnostico: string | null

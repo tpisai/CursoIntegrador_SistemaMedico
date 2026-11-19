@@ -1,53 +1,86 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { CalendarPlusIcon, FileTextIcon, MegaphoneIcon, TicketIcon } from "lucide-react"
+import {
+  CalendarPlusIcon,
+  CircleHelpIcon,
+  FileHeartIcon,
+  FlaskConicalIcon,
+  MegaphoneIcon,
+  SearchIcon,
+} from "lucide-react"
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { HistorialCard } from "@/components/citas/historial-card"
-import { MisCitasCard } from "@/components/citas/mis-citas-card"
 import { ProximaCita } from "@/components/citas/proxima-cita"
-import { Encabezado } from "@/components/portal/encabezado"
 import { Saludo } from "@/components/portal/saludo"
+import { type Acceso, BannerAyuda, TarjetasAcceso, TituloPortal } from "@/components/portal/tarjetas-acceso"
 
 export const metadata: Metadata = {
   title: "Inicio",
 }
 
-const ACCESOS = [
-  { href: "/paciente/agendar", titulo: "Agendar cita", texto: "Elige especialidad, doctor y horario.", Icono: CalendarPlusIcon },
-  { href: "/paciente/citas", titulo: "Mis citas", texto: "Ve tu ticket o cancela una cita.", Icono: TicketIcon },
-  { href: "/paciente/historial", titulo: "Historial médico", texto: "Revisa tus atenciones y documentos.", Icono: FileTextIcon },
-  { href: "/paciente/comunicacion", titulo: "Campañas de salud", texto: "Inscríbete en campañas gratuitas.", Icono: MegaphoneIcon },
+const ACCESOS: Acceso[] = [
+  {
+    href: "/paciente/agendar",
+    titulo: "Solicita tu cita",
+    texto: "Agenda una nueva cita médica de forma rápida y segura.",
+    boton: "Solicitar",
+    Icono: CalendarPlusIcon,
+    color: "azul",
+  },
+  {
+    href: "/paciente/citas",
+    titulo: "Consulta tus citas",
+    texto: "Revisa el estado, el ticket y los detalles de tus citas programadas.",
+    boton: "Consultar",
+    Icono: SearchIcon,
+    color: "verde",
+  },
+  {
+    href: "/paciente/historial",
+    titulo: "Historial médico",
+    texto: "Revisa tus atenciones anteriores, diagnósticos y recetas.",
+    boton: "Ver historial",
+    Icono: FileHeartIcon,
+    color: "amarillo",
+  },
+  {
+    href: "/paciente/historial",
+    titulo: "Resultados y documentos",
+    texto: "Descarga tus resultados de laboratorio y documentos médicos.",
+    boton: "Ver",
+    Icono: FlaskConicalIcon,
+    color: "celeste",
+  },
+  {
+    href: "/paciente/comunicacion",
+    titulo: "Campañas de salud",
+    texto: "Inscríbete en las campañas gratuitas para la comunidad.",
+    boton: "Ver campañas",
+    Icono: MegaphoneIcon,
+    color: "violeta",
+  },
+  {
+    href: "/paciente/ayuda",
+    titulo: "Centro de ayuda",
+    texto: "Tutoriales y guías paso a paso para usar el portal.",
+    boton: "Ver ayuda",
+    Icono: CircleHelpIcon,
+    color: "rosa",
+  },
 ]
 
 export default function InicioPacientePage() {
   return (
     <>
-      <Encabezado titulo={<Saludo />} descripcion="¿Qué necesitas hacer hoy?" />
+      <TituloPortal
+        titulo="Portal del Paciente · Centro de Salud Miguel Grau"
+        subtitulo={
+          <>
+            <Saludo />, ¿qué necesitas hacer hoy?
+          </>
+        }
+      />
       <ProximaCita />
-      <nav aria-label="Accesos rápidos">
-        <ul className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {ACCESOS.map(({ href, titulo, texto, Icono }) => (
-            <li key={href}>
-              <Link href={href} className="group block h-full rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-                <Card className="h-full transition-colors group-hover:bg-secondary">
-                  <CardHeader className="gap-1.5">
-                    <span className="mb-2 flex size-11 items-center justify-center rounded-lg bg-secondary text-primary group-hover:bg-card">
-                      <Icono className="size-5" aria-hidden="true" />
-                    </span>
-                    <CardTitle>{titulo}</CardTitle>
-                    <CardDescription>{texto}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <MisCitasCard conTicket={false} />
-        <HistorialCard />
-      </div>
+      <TarjetasAcceso accesos={ACCESOS} />
+      <BannerAyuda href="/paciente/ayuda" />
     </>
   )
 }

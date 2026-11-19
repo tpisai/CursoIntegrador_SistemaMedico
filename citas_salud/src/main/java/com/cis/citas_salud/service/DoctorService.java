@@ -98,12 +98,21 @@ public class DoctorService {
                 .map(DoctorService::respuesta).toList();
     }
 
-    /** Citas activas desde hoy: sirven para elegir la cita a reprogramar o el paciente a derivar. */
+    /** Citas activas desde hoy: se usan para elegir la cita que el doctor quiere reprogramar. */
     @Transactional(readOnly = true)
     public List<CitaAsignadaResponse> citasProximas(UsuarioSesion sesion) {
         LocalDate hoy = LocalDate.now();
         return citaRepository.delDoctorEntre(doctor(sesion).getIdDoctor(), Cita.ACTIVAS, hoy, hoy.plusYears(1)).stream()
                 .map(DoctorService::respuesta).toList();
+    }
+
+    /** Citas con atención registrada que pueden respaldar una solicitud de derivación. */
+    @Transactional(readOnly = true)
+    public List<CitaAsignadaResponse> citasAtendidas(UsuarioSesion sesion) {
+        Doctor doctor = doctor(sesion);
+        return atencionRepository.findByDoctor_IdDoctorAndCita_EstadoOrderByFechaAtencionDesc(
+                        doctor.getIdDoctor(), Cita.ATENDIDA).stream()
+                .map(atencion -> respuesta(atencion.getCita())).toList();
     }
 
     @Transactional(readOnly = true)
@@ -141,12 +150,14 @@ public class DoctorService {
 
     public SolicitudResponse derivar(UsuarioSesion sesion, DerivacionRequest datos) {
         Doctor doctor = doctor(sesion);
-        Cita cita = citaActivaDelDoctor(doctor, datos.idCita());
+        Cita cita = citaAtendidaDelDoctor(doctor, datos.idCita());
         exigirSinPendiente(cita, Solicitud.DERIVACION, "Ya enviaste una derivación para este paciente y sigue pendiente.");
 
         Map<String, Object> detalle = new LinkedHashMap<>();
         detalle.put("establecimiento", datos.establecimiento().trim());
         detalle.put("especialidad", datos.especialidad().trim());
+        detalle.put("antecedentes", datos.antecedentes().trim());
+        detalle.put("factoresRiesgo", datos.factoresRiesgo().trim());
         Solicitud solicitud = guardar(doctor, cita, Solicitud.DERIVACION, datos.motivo(), detalle);
 
         avisar(doctor, "Derivación enviada a administración",
@@ -315,6 +326,16 @@ public class DoctorService {
                 .filter(c -> c.getHorario().getDoctor().getIdDoctor().equals(doctor.getIdDoctor()))
                 .orElseThrow(() -> ApiException.noEncontrado("No encontramos esa cita en tu agenda."));
         if (!cita.estaActiva()) throw ApiException.conflicto("Esa cita ya no está activa.");
+        return cita;
+    }
+
+    private Cita citaAtendidaDelDoctor(Doctor doctor, Integer idCita) {
+        Cita cita = citaRepository.buscarConDetalle(idCita)
+                .filter(c -> c.getHorario().getDoctor().getIdDoctor().equals(doctor.getIdDoctor()))
+                .orElseThrow(() -> ApiException.noEncontrado("No encontramos esa cita en tu agenda."));
+        if (!Cita.ATENDIDA.equals(cita.getEstado()) || !atencionRepository.existsByCita_IdCita(idCita)) {
+            throw ApiException.conflicto("Solo puedes solicitar una derivación para una cita atendida.");
+        }
         return cita;
     }
 

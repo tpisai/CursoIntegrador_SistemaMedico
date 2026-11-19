@@ -7,7 +7,7 @@ SaludGrau: appointment system for Centro de Salud Miguel Grau. `citas_salud/` is
 DB and installer commands run from the repo root, backend from `citas_salud/`, frontend from `frontend/`.
 
 - DB install: `powershell -ExecutionPolicy Bypass -File sql\instalar_bd.ps1` (`-Actualizar` idempotent, `-Reiniciar` drops and recreates). The installer auto-loads every `sql/NN_*.sql` from `06` upward, so new scripts must be re-runnable (`CREATE TABLE IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) or `-Actualizar` fails on existing data.
-- Backend: `.\mvnw spring-boot:run` on 8080, JDK 25.
+- Backend: `.\mvnw spring-boot:run` on 8080, JDK 21.
 - Tests: `.\mvnw test` runs unit tests only. `@Tag("integracion")` tests such as `CitasSaludApplicationTests` need PostgreSQL and are excluded through `excludedGroups`; run them with `.\mvnw test -DexcludedGroups= -Dtest=CitasSaludApplicationTests`, or one method with `-Dtest=CitaServiceTest#metodo`.
 - Frontend: `npm install`, `npm run dev` on 3000, `npm run lint` (bare `eslint`, flat config). `/api/*` is proxied to `http://localhost:8080` by `next.config.ts`; override with `BACKEND_URL`.
 - Typecheck: `npx tsc --noEmit`. On a fresh clone run `npm run build` or `npm run dev` first: `next-env.d.ts` and `.next/types/routes.d.ts` are gitignored but provide the global `PageProps` / `LayoutProps<...>` types.

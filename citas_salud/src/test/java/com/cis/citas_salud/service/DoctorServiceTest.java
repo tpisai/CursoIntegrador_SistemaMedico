@@ -616,31 +616,80 @@ class DoctorServiceTest {
     }
 
     @Test
+    void listaParaDerivarSoloCitasAtendidasConAtencionDelDoctor() {
+        existeElDoctor();
+        Cita cita = DatosPrueba.cita(ID_CITA, paciente, DatosPrueba.horario(5, doctor, HOY), Cita.ATENDIDA);
+        Atencion atencion = new Atencion();
+        atencion.setCita(cita);
+        when(atencionRepository.findByDoctor_IdDoctorAndCita_EstadoOrderByFechaAtencionDesc(doctor.getIdDoctor(), Cita.ATENDIDA))
+                .thenReturn(List.of(atencion));
+
+        var atendidas = servicio.citasAtendidas(sesion);
+
+        assertEquals(1, atendidas.size());
+        assertEquals(ID_CITA, atendidas.get(0).idCita());
+        assertEquals(Cita.ATENDIDA, atendidas.get(0).estado());
+    }
+
+    @Test
     void derivarGuardaElDestinoLegible() {
         existeElDoctor();
-        citaDe(doctor, HOY, Cita.CONFIRMADA);
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(ID_CITA)).thenReturn(true);
         sinSolicitudPendiente(Solicitud.DERIVACION);
         solicitudSeGuardaConId();
         when(usuarioRepository.findByRol_NombreAndEstado("ADMINISTRADOR", "ACTIVO")).thenReturn(List.of());
 
         SolicitudResponse respuesta = servicio.derivar(sesion,
-                new DerivacionRequest(ID_CITA, " Hospital de Chosica ", " Cardiología ", "Soplo cardíaco"));
+                new DerivacionRequest(ID_CITA, " Hospital de Chosica ", " Cardiología ", "Soplo cardíaco",
+                        "Antecedentes familiares cardiovasculares", "Tabaquismo"));
 
         assertEquals(Solicitud.DERIVACION, respuesta.tipo());
         assertEquals("Hospital de Chosica · Cardiología", respuesta.detalle());
+        ArgumentCaptor<Solicitud> guardada = ArgumentCaptor.forClass(Solicitud.class);
+        verify(solicitudRepository).save(guardada.capture());
+        String datos = guardada.getValue().getDatosAdicionales();
+        assertTrue(datos.contains("\"establecimiento\":\"Hospital de Chosica\""));
+        assertTrue(datos.contains("\"especialidad\":\"Cardiología\""));
+        assertTrue(datos.contains("\"antecedentes\":\"Antecedentes familiares cardiovasculares\""));
+        assertTrue(datos.contains("\"factoresRiesgo\":\"Tabaquismo\""));
+        assertEquals("Soplo cardíaco", guardada.getValue().getMotivo());
         verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Derivación enviada a administración"), anyString());
     }
 
     @Test
-    void derivacionYaPendienteResponde409() {
+    void derivarCitaSinAtenderResponde409() {
         existeElDoctor();
         citaDe(doctor, HOY, Cita.CONFIRMADA);
+
+        exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
+
+        verify(solicitudRepository, never()).save(any());
+    }
+
+    @Test
+    void derivarCitaAtendidaSinRegistroDeAtencionResponde409() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+
+        exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
+
+        verify(solicitudRepository, never()).save(any());
+    }
+
+    @Test
+    void derivacionYaPendienteResponde409() {
+        existeElDoctor();
+        citaDe(doctor, HOY, Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(ID_CITA)).thenReturn(true);
         when(solicitudRepository.existsByCita_IdCitaAndTipoAndEstado(ID_CITA, Solicitud.DERIVACION, Solicitud.PENDIENTE))
                 .thenReturn(true);
 
         exigeError(HttpStatus.CONFLICT, () -> servicio.derivar(sesion,
-                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo")));
+                new DerivacionRequest(ID_CITA, "Hospital", "Cardiología", "Soplo", "Antecedentes", "Factores")));
 
         verify(solicitudRepository, never()).save(any());
     }

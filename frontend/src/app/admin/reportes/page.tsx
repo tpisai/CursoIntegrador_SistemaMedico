@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { ReporteCitas } from "@/components/admin/reporte-citas"
+import { ReporteCitasIntegral } from "@/components/admin/reporte-citas-integral"
 import { Encabezado } from "@/components/portal/encabezado"
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default function ReportesPage() {
         descripcion="Revisa cuántas citas se atendieron y el ausentismo por especialidad y por doctor."
       />
       <ReporteCitas />
+      <ReporteCitasIntegral />
     </>
   )
 }

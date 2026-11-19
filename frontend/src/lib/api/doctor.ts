@@ -12,6 +12,7 @@ import type {
 export const rutasDoctor = {
   citasDelDia: (fecha: string) => `/doctor/citas?fecha=${fecha}`,
   citasProximas: "/doctor/citas/proximas",
+  citasAtendidas: "/doctor/citas/atendidas",
   solicitudes: "/doctor/solicitudes",
   tiposDocumento: "/doctor/tipos-documento",
 }

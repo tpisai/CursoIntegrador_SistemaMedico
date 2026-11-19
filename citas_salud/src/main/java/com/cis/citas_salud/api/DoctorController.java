@@ -61,6 +61,11 @@ public class DoctorController {
         return doctorService.citasProximas(sesion);
     }
 
+    @GetMapping("/citas/atendidas")
+    public List<CitaAsignadaResponse> citasAtendidas(UsuarioSesion sesion) {
+        return doctorService.citasAtendidas(sesion);
+    }
+
     @GetMapping("/horarios-libres")
     public List<HorarioLibreResponse> horariosLibres(UsuarioSesion sesion) {
         return doctorService.horariosLibres(sesion);

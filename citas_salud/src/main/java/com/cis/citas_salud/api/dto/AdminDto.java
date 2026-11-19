@@ -60,7 +60,8 @@ public final class AdminDto {
             // Nueva fecha propuesta o establecimiento de destino, ya en texto.
             String detalle,
             String motivo,
-            String respuestaAdmin) {
+            String respuestaAdmin,
+            Integer idAtencion) {
     }
 
     public enum Decision { APROBAR, RECHAZAR }

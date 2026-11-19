@@ -36,13 +36,15 @@ public class CitaService {
     private final NotificacionService notificacionService;
     private final Path carpetaArchivos;
     private final AtencionRepository atencionRepository;
+    private final ReporteClinicoRepository reporteClinicoRepository;
     private final RecetaMedicaService recetaMedicaService;
     private final OrdenExamenRepository ordenExamenRepository;
     private final OrdenExamenService ordenExamenService;
 
     public CitaService(CitaRepository citaRepository, HorarioRepository horarioRepository,
                        PacienteRepository pacienteRepository, DocumentoMedicoRepository documentoRepository,
-                       NotificacionService notificacionService, AtencionRepository atencionRepository, RecetaMedicaService recetaMedicaService,
+                       NotificacionService notificacionService, AtencionRepository atencionRepository,
+                       ReporteClinicoRepository reporteClinicoRepository, RecetaMedicaService recetaMedicaService,
                        OrdenExamenRepository ordenExamenRepository, OrdenExamenService ordenExamenService,
                        @Value("${saludgrau.archivos.carpeta:archivos}") String carpetaArchivos) {
         this.citaRepository = citaRepository;
@@ -51,6 +53,7 @@ public class CitaService {
         this.documentoRepository = documentoRepository;
         this.notificacionService = notificacionService;
         this.atencionRepository = atencionRepository;
+        this.reporteClinicoRepository = reporteClinicoRepository;
         this.recetaMedicaService = recetaMedicaService;
         this.ordenExamenRepository = ordenExamenRepository;
         this.ordenExamenService = ordenExamenService;
@@ -157,18 +160,29 @@ public class CitaService {
     @Transactional(readOnly = true)
     public List<AtencionHistorialResponse> historial(UsuarioSesion sesion) {
         List<Cita> citas = citaRepository.historialDelPaciente(paciente(sesion).getIdPaciente(), Cita.CERRADAS);
+        List<Integer> idsCita = citas.stream().map(Cita::getIdCita).toList();
         Set<Integer> citasConOrden = citas.isEmpty()
                 ? Set.of()
-                : Set.copyOf(ordenExamenRepository.findCitasConOrden(
-                        citas.stream().map(Cita::getIdCita).toList()));
+                : Set.copyOf(ordenExamenRepository.findCitasConOrden(idsCita));
+        List<Atencion> atenciones = citas.isEmpty() ? List.of() : atencionRepository.findByCita_IdCitaIn(idsCita);
+        var atencionPorCita = atenciones.stream().collect(java.util.stream.Collectors.toMap(
+                a -> a.getCita().getIdCita(), Atencion::getIdAtencion));
+        Set<Integer> atencionesConDerivacion = atenciones.isEmpty()
+                ? Set.of()
+                : Set.copyOf(reporteClinicoRepository.conDerivacion(atenciones.stream().map(Atencion::getIdAtencion).toList()));
         return citas.stream()
-                .map(c -> new AtencionHistorialResponse(
-                        c.getIdCita(),
-                        Formato.fecha(c.getHorario().getFecha()),
-                        c.getHorario().getDoctor().getEspecialidad().getNombre(),
-                        c.getHorario().getDoctor().getUsuario().getNombreCorto(),
-                        c.getEstado(),
-                        citasConOrden.contains(c.getIdCita())))
+                .map(c -> {
+                    Integer idAtencion = atencionPorCita.get(c.getIdCita());
+                    return new AtencionHistorialResponse(
+                            c.getIdCita(),
+                            idAtencion,
+                            Formato.fecha(c.getHorario().getFecha()),
+                            c.getHorario().getDoctor().getEspecialidad().getNombre(),
+                            c.getHorario().getDoctor().getUsuario().getNombreCorto(),
+                            c.getEstado(),
+                            citasConOrden.contains(c.getIdCita()),
+                            idAtencion != null && atencionesConDerivacion.contains(idAtencion));
+                })
                 .toList();
     }
 

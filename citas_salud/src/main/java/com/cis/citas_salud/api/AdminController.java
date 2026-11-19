@@ -14,9 +14,12 @@ import com.cis.citas_salud.service.AdminService;
 import com.cis.citas_salud.service.CampaniaService;
 import com.cis.citas_salud.service.RecepcionService;
 import com.cis.citas_salud.service.ReporteService;
+import com.cis.citas_salud.service.ReporteIntegralCitasService;
+import com.cis.citas_salud.service.ReporteClinicoService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,13 +42,19 @@ public class AdminController {
     private final CampaniaService campaniaService;
     private final RecepcionService recepcionService;
     private final ReporteService reporteService;
+    private final ReporteIntegralCitasService reporteIntegralCitasService;
+    private final ReporteClinicoService reporteClinicoService;
 
     public AdminController(AdminService adminService, CampaniaService campaniaService,
-                           RecepcionService recepcionService, ReporteService reporteService) {
+                           RecepcionService recepcionService, ReporteService reporteService,
+                           ReporteClinicoService reporteClinicoService,
+                           ReporteIntegralCitasService reporteIntegralCitasService) {
         this.adminService = adminService;
         this.campaniaService = campaniaService;
         this.recepcionService = recepcionService;
         this.reporteService = reporteService;
+        this.reporteClinicoService = reporteClinicoService;
+        this.reporteIntegralCitasService = reporteIntegralCitasService;
     }
 
     @GetMapping("/resumen")
@@ -61,9 +70,24 @@ public class AdminController {
         return reporteService.citas(sesion, desde, hasta);
     }
 
+    @GetMapping("/reportes/citas-integral/pdf")
+    public ResponseEntity<byte[]> reporteIntegralCitas(
+            UsuarioSesion sesion,
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "secciones", required = false) List<String> secciones) {
+        return CitaController.descarga(reporteIntegralCitasService.pdf(sesion, desde, hasta, secciones));
+    }
+
     @GetMapping("/solicitudes")
     public List<SolicitudAdminResponse> solicitudes(UsuarioSesion sesion) {
         return adminService.solicitudes(sesion);
+    }
+
+    @GetMapping("/solicitudes/{id}/referencia")
+    public ResponseEntity<byte[]> referencia(UsuarioSesion sesion,
+                                              @PathVariable("id") Integer idSolicitud) {
+        return CitaController.descarga(reporteClinicoService.deReferenciaAdministracion(sesion, idSolicitud));
     }
 
     @PatchMapping("/solicitudes/{id}")

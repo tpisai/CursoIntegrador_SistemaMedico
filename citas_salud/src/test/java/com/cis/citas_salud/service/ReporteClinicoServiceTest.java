@@ -2,12 +2,19 @@ package com.cis.citas_salud.service;
 
 import com.cis.citas_salud.api.ApiException;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Doctor;
 import com.cis.citas_salud.entity.Paciente;
+import com.cis.citas_salud.entity.PersonalAdministrativo;
+import com.cis.citas_salud.entity.Solicitud;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
+import com.cis.citas_salud.repository.PacienteRepository;
+import com.cis.citas_salud.repository.PersonalAdministrativoRepository;
 import com.cis.citas_salud.repository.ReporteClinicoRepository;
+import com.cis.citas_salud.repository.SolicitudRepository;
 import com.cis.citas_salud.service.CitaService.Archivo;
 import com.cis.citas_salud.service.ReporteClinicoService.Documento;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,16 +51,27 @@ class ReporteClinicoServiceTest {
     @Mock
     private ReporteClinicoRepository reporteRepository;
     @Mock
+    private PacienteRepository pacienteRepository;
+    @Mock
+    private AtencionRepository atencionRepository;
+    @Mock
+    private SolicitudRepository solicitudRepository;
+    @Mock
+    private PersonalAdministrativoRepository personalRepository;
+    @Mock
     private GeneradorReportesSql generador;
 
     private ReporteClinicoService servicio;
     private final UsuarioSesion sesion = new UsuarioSesion(20, UsuarioSesion.DOCTOR);
+    private final UsuarioSesion sesionPaciente = new UsuarioSesion(10, UsuarioSesion.PACIENTE);
+    private final UsuarioSesion sesionAdmin = new UsuarioSesion(30, UsuarioSesion.ADMINISTRADOR);
     private Doctor doctor;
     private Paciente paciente;
 
     @BeforeEach
     void preparar() {
-        servicio = new ReporteClinicoService(doctorRepository, citaRepository, reporteRepository, generador);
+        servicio = new ReporteClinicoService(doctorRepository, citaRepository, reporteRepository,
+                pacienteRepository, atencionRepository, solicitudRepository, personalRepository, generador);
         doctor = DatosPrueba.doctor(3, DatosPrueba.usuario(20, UsuarioSesion.DOCTOR, "87654321"));
         paciente = DatosPrueba.paciente(1, DatosPrueba.usuario(10, UsuarioSesion.PACIENTE, "12345678"));
     }
@@ -136,6 +154,129 @@ class ReporteClinicoServiceTest {
 
         assertEquals("fichas-consulta-12345678.pdf", archivo.nombre());
         assertArrayEquals(PDF, archivo.contenido());
+    }
+
+    private Cita citaAtendida(Paciente titular) {
+        return DatosPrueba.cita(ID_CITA, titular,
+                DatosPrueba.horario(5, doctor, LocalDate.now()), Cita.ATENDIDA);
+    }
+
+    private Atencion atencionDe(Cita cita) {
+        Atencion atencion = new Atencion();
+        atencion.setIdAtencion(ID_ATENCION);
+        atencion.setCita(cita);
+        return atencion;
+    }
+
+    @Test
+    void pacienteDescargaSoloLaReferenciaDeSuCita() {
+        when(pacienteRepository.findByUsuario_IdUsuario(10)).thenReturn(Optional.of(paciente));
+        when(reporteRepository.esDelPaciente(ID_ATENCION, 1)).thenReturn(true);
+        when(reporteRepository.tieneDerivacion(ID_ATENCION)).thenReturn(true);
+        when(generador.pdf("InformeMedicoDerivacion", Map.of("ID_ATENCION", ID_ATENCION))).thenReturn(PDF);
+
+        Archivo archivo = servicio.deReferenciaPaciente(sesionPaciente, ID_ATENCION);
+
+        assertEquals("referencia-90.pdf", archivo.nombre());
+        assertArrayEquals(PDF, archivo.contenido());
+    }
+
+    @Test
+    void pacienteNoPuedeDescargarLaReferenciaDeOtraPersona() {
+        when(pacienteRepository.findByUsuario_IdUsuario(10)).thenReturn(Optional.of(paciente));
+        when(reporteRepository.esDelPaciente(ID_ATENCION, 1)).thenReturn(false);
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.deReferenciaPaciente(sesionPaciente, ID_ATENCION));
+
+        verifyNoInteractions(atencionRepository, generador);
+    }
+
+    @Test
+    void pacienteNoDescargaUnaAtencionSinDerivacion() {
+        when(pacienteRepository.findByUsuario_IdUsuario(10)).thenReturn(Optional.of(paciente));
+        when(reporteRepository.esDelPaciente(ID_ATENCION, 1)).thenReturn(true);
+        when(reporteRepository.tieneDerivacion(ID_ATENCION)).thenReturn(false);
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.deReferenciaPaciente(sesionPaciente, ID_ATENCION));
+
+        verifyNoInteractions(generador);
+    }
+
+    @Test
+    void administracionDescargaLaReferenciaDesdeLaSolicitud() {
+        PersonalAdministrativo admin = new PersonalAdministrativo();
+        Cita cita = citaAtendida(paciente);
+        Solicitud solicitud = new Solicitud();
+        solicitud.setTipo(Solicitud.DERIVACION);
+        solicitud.setCita(cita);
+        when(personalRepository.findByUsuario_IdUsuario(30)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.buscarConDetalle(7)).thenReturn(Optional.of(solicitud));
+        when(atencionRepository.findByCita_IdCita(ID_CITA)).thenReturn(Optional.of(atencionDe(cita)));
+        when(generador.pdf("InformeMedicoDerivacion", Map.of("ID_ATENCION", ID_ATENCION))).thenReturn(PDF);
+
+        Archivo archivo = servicio.deReferenciaAdministracion(sesionAdmin, 7);
+
+        assertEquals("referencia-90.pdf", archivo.nombre());
+        assertArrayEquals(PDF, archivo.contenido());
+    }
+
+    @Test
+    void pacienteSinPerfilNoPuedeDescargarReferencias() {
+        when(pacienteRepository.findByUsuario_IdUsuario(10)).thenReturn(Optional.empty());
+
+        exigeError(HttpStatus.FORBIDDEN, () -> servicio.deReferenciaPaciente(sesionPaciente, ID_ATENCION));
+
+        verifyNoInteractions(reporteRepository, generador);
+    }
+
+    @Test
+    void administracionInactivaNoPuedeDescargarReferencias() {
+        PersonalAdministrativo admin = new PersonalAdministrativo();
+        admin.setEstado("INACTIVO");
+        when(personalRepository.findByUsuario_IdUsuario(30)).thenReturn(Optional.of(admin));
+
+        exigeError(HttpStatus.FORBIDDEN, () -> servicio.deReferenciaAdministracion(sesionAdmin, 7));
+
+        verifyNoInteractions(solicitudRepository, atencionRepository, generador);
+    }
+
+    @Test
+    void administracionNoDescargaSiLaCitaAunNoTieneAtencion() {
+        PersonalAdministrativo admin = new PersonalAdministrativo();
+        Solicitud solicitud = new Solicitud();
+        solicitud.setTipo(Solicitud.DERIVACION);
+        solicitud.setCita(citaAtendida(paciente));
+        when(personalRepository.findByUsuario_IdUsuario(30)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.buscarConDetalle(7)).thenReturn(Optional.of(solicitud));
+        when(atencionRepository.findByCita_IdCita(ID_CITA)).thenReturn(Optional.empty());
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.deReferenciaAdministracion(sesionAdmin, 7));
+
+        verifyNoInteractions(generador);
+    }
+
+    @Test
+    void administracionNoDescargaSolicitudesQueNoSonDerivaciones() {
+        PersonalAdministrativo admin = new PersonalAdministrativo();
+        Solicitud solicitud = new Solicitud();
+        solicitud.setTipo(Solicitud.CAMBIO_HORARIO);
+        when(personalRepository.findByUsuario_IdUsuario(30)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.buscarConDetalle(7)).thenReturn(Optional.of(solicitud));
+
+        exigeError(HttpStatus.NOT_FOUND, () -> servicio.deReferenciaAdministracion(sesionAdmin, 7));
+
+        verifyNoInteractions(atencionRepository, generador);
+    }
+
+    @Test
+    void rolNoAutorizadoNoConsultaLaReferencia() {
+        exigeError(HttpStatus.FORBIDDEN,
+                () -> servicio.deReferenciaAdministracion(sesionPaciente, 7));
+        exigeError(HttpStatus.FORBIDDEN,
+                () -> servicio.deReferenciaPaciente(sesion, ID_ATENCION));
+
+        verifyNoInteractions(personalRepository, pacienteRepository, solicitudRepository, citaRepository,
+                atencionRepository, reporteRepository, generador);
     }
 
     @Test

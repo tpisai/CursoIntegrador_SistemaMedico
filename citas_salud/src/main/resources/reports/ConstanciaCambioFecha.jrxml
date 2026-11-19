@@ -11,10 +11,18 @@
   FROM solicitud s
   WHERE s.id_solicitud = $P{ID_SOLICITUD}
 )
-SELECT s.id_solicitud, s.estado, s.motivo, s.fecha_solicitud, s.fecha_respuesta,
+SELECT s.id_solicitud,
+       CASE s.estado
+         WHEN 'APROBADA' THEN 'Pendiente de decisión del paciente'
+         WHEN 'RESUELTA' THEN 'Resuelta por decisión del paciente'
+         ELSE s.estado
+       END AS estado,
+       s.motivo, s.fecha_solicitud, s.fecha_respuesta,
        COALESCE(NULLIF(TRIM(s.respuesta_admin), ''), 'Sin observaciones de administración.') AS respuesta_admin,
        CONCAT(pu.nombres, ' ', pu.apellidos) AS paciente, pu.dni,
-       CONCAT(du.nombres, ' ', du.apellidos) AS doctor, COALESCE(d.cmp, '-') AS cmp,
+       COALESCE(NULLIF(TRIM(s.json ->> 'doctorOriginal'), ''),
+                CONCAT(du.nombres, ' ', du.apellidos)) AS doctor,
+       COALESCE(d.cmp, '-') AS cmp,
        e.nombre AS especialidad, c.numero_ticket,
        COALESCE(s.json ->> 'fechaOriginal', TO_CHAR(h.fecha, 'YYYY-MM-DD')) AS fecha_original,
        COALESCE(s.json ->> 'horaOriginal', TO_CHAR(h.hora_inicio, 'HH24:MI')) AS hora_original,
@@ -88,7 +96,7 @@ JOIN especialidad e ON e.id_especialidad = d.id_especialidad]]></query>
                 <expression><![CDATA["DNI: " + $F{dni}]]></expression>
             </element>
             <element kind="textField" x="0" y="44" width="300" height="16" fontSize="9.0" blankWhenNull="true">
-                <expression><![CDATA["Doctor(a): " + $F{doctor}]]></expression>
+                <expression><![CDATA["Doctor(a) original: " + $F{doctor}]]></expression>
             </element>
             <element kind="textField" x="320" y="44" width="195" height="16" fontSize="9.0" blankWhenNull="true">
                 <expression><![CDATA["CMP: " + $F{cmp}]]></expression>

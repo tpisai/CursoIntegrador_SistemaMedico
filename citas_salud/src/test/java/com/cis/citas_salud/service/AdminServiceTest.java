@@ -7,6 +7,7 @@ import com.cis.citas_salud.api.dto.AdminDto.Decision;
 import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.SolicitudAdminResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
+import com.cis.citas_salud.entity.Atencion;
 import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Consultorio;
 import com.cis.citas_salud.entity.Doctor;
@@ -15,6 +16,7 @@ import com.cis.citas_salud.entity.Notificacion;
 import com.cis.citas_salud.entity.Paciente;
 import com.cis.citas_salud.entity.PersonalAdministrativo;
 import com.cis.citas_salud.entity.Solicitud;
+import com.cis.citas_salud.repository.AtencionRepository;
 import com.cis.citas_salud.repository.CampaniaRepository;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
@@ -73,6 +75,8 @@ class AdminServiceTest {
     @Mock
     private SolicitudRepository solicitudRepository;
     @Mock
+    private AtencionRepository atencionRepository;
+    @Mock
     private CampaniaRepository campaniaRepository;
     @Mock
     private DoctorRepository doctorRepository;
@@ -91,8 +95,8 @@ class AdminServiceTest {
 
     @BeforeEach
     void preparar() {
-        servicio = new AdminService(personalRepository, citaRepository, solicitudRepository, campaniaRepository,
-                doctorRepository, horarioGenerador, notificacionService, JsonMapper.builder().build());
+        servicio = new AdminService(personalRepository, citaRepository, solicitudRepository, atencionRepository,
+                campaniaRepository, doctorRepository, horarioGenerador, notificacionService, JsonMapper.builder().build());
         personal = new PersonalAdministrativo();
         personal.setIdPersonalAdministrativo(ID_PERSONAL);
         personal.setUsuario(DatosPrueba.usuario(1, UsuarioSesion.ADMINISTRADOR, "44556677"));
@@ -151,6 +155,20 @@ class AdminServiceTest {
     // ----- Cambio de fecha -----
 
     @Test
+    void solicitudesIncluyeIdAtencionCuandoYaExisteReferenciaDescargable() {
+        existeElPersonal();
+        when(solicitudRepository.recientes()).thenReturn(List.of(solicitud(Solicitud.DERIVACION, "{}")));
+        Atencion atencion = new Atencion();
+        atencion.setIdAtencion(90);
+        atencion.setCita(cita);
+        when(atencionRepository.findByCita_IdCitaIn(List.of(33))).thenReturn(List.of(atencion));
+
+        List<SolicitudAdminResponse> solicitudes = servicio.solicitudes(sesion);
+
+        assertEquals(90, solicitudes.get(0).idAtencion());
+    }
+
+    @Test
     void aprobarCambioDeFechaNoMueveLaCitaYAvisaAlPacienteParaQueElija() {
         Solicitud solicitud = pendiente(cambioDeFecha());
 
@@ -191,6 +209,8 @@ class AdminServiceTest {
     @Test
     void aprobarDerivacionAvisaAlPacienteYAlDoctor() {
         Solicitud solicitud = pendiente(derivacion());
+        cita.setEstado(Cita.ATENDIDA);
+        when(atencionRepository.existsByCita_IdCita(cita.getIdCita())).thenReturn(true);
 
         SolicitudAdminResponse respuesta = aprobar();
 
@@ -202,6 +222,29 @@ class AdminServiceTest {
                 eq("Fuiste derivado a otro establecimiento"), contains("Hospital de Chosica"));
         verify(notificacionService).crear(eq(doctor.getUsuario()), eq(Notificacion.SOLICITUD),
                 eq("Solicitud aprobada"), anyString());
+    }
+
+    @Test
+    void aprobarDerivacionDeCitaSinAtenderResponde409() {
+        Solicitud solicitud = pendiente(derivacion());
+
+        ApiException error = exigeError(HttpStatus.CONFLICT, this::aprobar);
+
+        assertEquals("Solo se puede aprobar una derivación después de registrar la atención.", error.getMessage());
+        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
+        verifyNoInteractions(notificacionService);
+    }
+
+    @Test
+    void aprobarDerivacionAtendidaSinAtencionRegistradaResponde409() {
+        Solicitud solicitud = pendiente(derivacion());
+        cita.setEstado(Cita.ATENDIDA);
+
+        ApiException error = exigeError(HttpStatus.CONFLICT, this::aprobar);
+
+        assertEquals("Solo se puede aprobar una derivación después de registrar la atención.", error.getMessage());
+        assertEquals(Solicitud.PENDIENTE, solicitud.getEstado());
+        verifyNoInteractions(notificacionService);
     }
 
     @Test

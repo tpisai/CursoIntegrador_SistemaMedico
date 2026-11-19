@@ -2,6 +2,7 @@ package com.cis.citas_salud.service;
 
 import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperReport;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -35,5 +36,13 @@ class PlantillasClinicasTest {
         JRParameter declarado = Arrays.stream(reporte.getParameters())
                 .filter(p -> p.getName().equals(parametro)).findFirst().orElseThrow();
         assertEquals(Integer.class, declarado.getValueClass());
+    }
+
+    @Test
+    void constanciaMuestraElDoctorOriginalYEsperaDecisionDelPaciente() {
+        String consulta = GeneradorReportesSql.compilar("ConstanciaCambioFecha").getQuery().getText();
+
+        assertTrue(consulta.contains("s.json ->> 'doctorOriginal'"), consulta);
+        assertTrue(consulta.contains("WHEN 'APROBADA' THEN 'Pendiente de decisión del paciente'"), consulta);
     }
 }

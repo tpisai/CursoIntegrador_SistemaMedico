@@ -14,6 +14,9 @@ public interface ReporteClinicoRepository extends Repository<Atencion, Integer> 
     @Query("select count(a) > 0 from Atencion a where a.idAtencion = :atencion and a.doctor.idDoctor = :doctor")
     boolean esDelDoctor(@Param("atencion") Integer idAtencion, @Param("doctor") Integer idDoctor);
 
+    @Query("select count(a) > 0 from Atencion a where a.idAtencion = :atencion and a.historia.paciente.idPaciente = :paciente")
+    boolean esDelPaciente(@Param("atencion") Integer idAtencion, @Param("paciente") Integer idPaciente);
+
     @Query("""
             select count(s) > 0 from Solicitud s, Atencion a
             where a.idAtencion = :atencion and s.cita = a.cita and s.tipo = 'DERIVACION'

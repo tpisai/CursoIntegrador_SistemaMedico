@@ -5,8 +5,11 @@
 # Respaldos de la base: contienen datos de pacientes.
 respaldos/
 
-# Estado local del asistente (caché e índice regenerables, no es código del proyecto).
+# Estado y archivos locales del asistente; no forman parte del proyecto publicado.
 .atl/
+odd/
+AGENTS.md
+agents.md
 
 # Archivos temporales, de editor y del sistema: nunca se versionan.
 *.tmp

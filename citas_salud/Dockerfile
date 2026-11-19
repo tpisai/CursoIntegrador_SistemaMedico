@@ -1,5 +1,5 @@
 # Etapa 1: compila el jar con el mismo Maven Wrapper que se usa en local.
-FROM eclipse-temurin:25-jdk AS compilacion
+FROM eclipse-temurin:21-jdk AS compilacion
 
 # La imagen no trae curl ni unzip, que mvnw usa para descargar Maven.
 RUN apt-get update \
@@ -18,7 +18,7 @@ RUN ./mvnw -B -q -DskipTests package
 
 
 # Etapa 2: imagen final, solo con el JRE y el jar.
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:21-jre
 
 # curl es para el healthcheck: esta imagen tampoco lo trae. El UID es fijo para que el usuario siga
 # siendo dueño del volumen de archivos aunque la imagen base cambie en una actualización.

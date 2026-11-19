@@ -128,6 +128,8 @@ export interface ReservarCitaRequest {
 
 export interface AtencionHistorial {
   idCita: number
+  idAtencion: number | null
+  tieneDerivacion: boolean
   fecha: string
   especialidad: string
   doctor: string
@@ -168,6 +170,8 @@ export interface DerivacionRequest {
   establecimiento: string
   especialidad: string
   motivo: string
+  antecedentes: string
+  factoresRiesgo: string
 }
 
 export type TipoSolicitud = "CAMBIO_HORARIO" | "DERIVACION"
@@ -296,6 +300,7 @@ export interface SolicitudAdmin {
   detalle: string | null
   motivo: string
   respuestaAdmin: string | null
+  idAtencion: number | null
 }
 
 export interface ResponderSolicitudRequest {

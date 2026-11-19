@@ -16,6 +16,10 @@ export function useCitasProximas() {
   return useSWR<CitaAsignada[]>(rutasDoctor.citasProximas, AGENDA)
 }
 
+export function useCitasAtendidas() {
+  return useSWR<CitaAsignada[]>(rutasDoctor.citasAtendidas, AGENDA)
+}
+
 export function useSolicitudes() {
   return useSWR<Solicitud[]>(rutasDoctor.solicitudes)
 }

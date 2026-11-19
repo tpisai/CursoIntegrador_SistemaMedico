@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { CircleAlertIcon, InboxIcon } from "lucide-react"
+import { CircleAlertIcon, DownloadIcon, InboxIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
@@ -13,8 +15,10 @@ import { type Respuesta, ResponderSolicitudDialog } from "@/components/admin/res
 import { BotonConstanciaCambio, tieneConstanciaCambio } from "@/components/citas/boton-constancia-cambio"
 import { EstadoSolicitudBadge } from "@/components/citas/estado-cita-badge"
 import { useSolicitudesAdmin } from "@/hooks/use-admin"
+import { descargarReferenciaSolicitud } from "@/lib/api/admin"
 import { mensajeDeError } from "@/lib/api/http"
 import type { TipoSolicitud } from "@/lib/api/types"
+import { guardarArchivo } from "@/lib/descargar"
 import { formatDiaHora } from "@/lib/format"
 
 const TEXTOS: Record<TipoSolicitud, { titulo: string; descripcion: string; vacio: string; aprobar: string }> = {
@@ -36,8 +40,20 @@ const TEXTOS: Record<TipoSolicitud, { titulo: string; descripcion: string; vacio
 export function SolicitudesAdminCard({ tipo }: { tipo: TipoSolicitud }) {
   const { data, error, isLoading } = useSolicitudesAdmin()
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null)
+  const [descargandoReferencia, setDescargandoReferencia] = useState<number | null>(null)
   const solicitudes = data?.filter((s) => s.tipo === tipo)
   const textos = TEXTOS[tipo]
+
+  async function descargarReferencia(idSolicitud: number, idAtencion: number) {
+    setDescargandoReferencia(idSolicitud)
+    try {
+      guardarArchivo(await descargarReferenciaSolicitud(idSolicitud), `referencia-${idAtencion}.pdf`)
+    } catch (error) {
+      toast.error(mensajeDeError(error))
+    } finally {
+      setDescargandoReferencia(null)
+    }
+  }
 
   return (
     <Card>
@@ -99,6 +115,28 @@ export function SolicitudesAdminCard({ tipo }: { tipo: TipoSolicitud }) {
                       </>
                     ) : tieneConstanciaCambio(s.tipo, s.estado) ? (
                       <BotonConstanciaCambio idSolicitud={s.idSolicitud} />
+                    ) : null}
+                    {tipo === "DERIVACION" && s.idAtencion !== null ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={descargandoReferencia === s.idSolicitud}
+                        onClick={() => {
+                          if (s.idAtencion !== null) void descargarReferencia(s.idSolicitud, s.idAtencion)
+                        }}
+                      >
+                        {descargandoReferencia === s.idSolicitud ? (
+                          <Spinner className="mr-1.5 size-4" />
+                        ) : (
+                          <DownloadIcon className="mr-1.5 size-4" />
+                        )}
+                        Descargar referencia PDF
+                      </Button>
+                    ) : null}
+                    {tipo === "DERIVACION" && s.idAtencion === null ? (
+                      <span className="text-xs text-muted-foreground">
+                        La referencia estará disponible cuando se registre la atención.
+                      </span>
                     ) : null}
                   </div>
                 </div>

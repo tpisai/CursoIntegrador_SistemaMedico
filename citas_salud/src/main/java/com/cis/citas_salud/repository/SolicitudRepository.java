@@ -7,12 +7,16 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface SolicitudRepository extends JpaRepository<Solicitud, Integer> {
 
     boolean existsByCita_IdCitaAndTipoAndEstado(Integer idCita, String tipo, String estado);
+
+    @Query("select distinct s.cita.idCita from Solicitud s where s.cita.idCita in :citas and s.tipo = 'DERIVACION'")
+    List<Integer> citasConDerivacion(@Param("citas") Collection<Integer> idsCita);
 
     long countByEstado(String estado);
 

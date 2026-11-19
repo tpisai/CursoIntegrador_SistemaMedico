@@ -1,13 +1,14 @@
 import type { Metadata } from "next"
-import { Geist_Mono, Inter } from "next/font/google"
+import { Geist_Mono, Poppins } from "next/font/google"
 
 import { Providers } from "@/components/providers"
 import "./globals.css"
 
-// El prototipo de Figma usa Inter.
-const inter = Inter({
+// Rediseño: Poppins, tipografía redondeada y legible usada por portales de salud modernos.
+const poppins = Poppins({
   variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 })
 
 const geistMono = Geist_Mono({
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="es" className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
       </body>

@@ -27,10 +27,16 @@ export default function SolicitudesDoctorPage() {
         </AlertDescription>
       </Alert>
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-        <CambioFechaCard />
-        <DerivacionCard />
+        <div id="cambio-fecha" className="scroll-mt-24">
+          <CambioFechaCard />
+        </div>
+        <div id="derivacion" className="scroll-mt-24">
+          <DerivacionCard />
+        </div>
       </div>
-      <SolicitudesCard />
+      <div id="mis-solicitudes" className="scroll-mt-24">
+        <SolicitudesCard />
+      </div>
     </>
   )
 }

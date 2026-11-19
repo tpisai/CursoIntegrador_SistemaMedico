@@ -18,6 +18,9 @@ public interface OrdenExamenRepository extends JpaRepository<OrdenExamen, Intege
     @Query("select o.atencion.cita.idCita from OrdenExamen o where o.atencion.cita.idCita in :idsCita")
     List<Integer> findCitasConOrden(@Param("idsCita") Collection<Integer> idsCita);
 
+    @Query("select o.atencion.idAtencion from OrdenExamen o where o.atencion.idAtencion in :idsAtencion")
+    List<Integer> findAtencionesConOrden(@Param("idsAtencion") Collection<Integer> idsAtencion);
+
     @EntityGraph(attributePaths = {
             "atencion.historia.paciente.usuario",
             "atencion.doctor.usuario",

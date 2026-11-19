@@ -29,6 +29,7 @@ import com.cis.citas_salud.repository.DoctorRepository;
 import com.cis.citas_salud.repository.DocumentoMedicoRepository;
 import com.cis.citas_salud.repository.HistoriaClinicaRepository;
 import com.cis.citas_salud.repository.HistorialClinicoRepository;
+import com.cis.citas_salud.repository.OrdenExamenRepository;
 import com.cis.citas_salud.repository.ReporteClinicoRepository;
 import com.cis.citas_salud.repository.ResultadoExamenRepository;
 import com.cis.citas_salud.service.CitaService.Archivo;
@@ -64,6 +65,7 @@ public class ConsultaService {
     private final AtencionRepository atencionRepository;
     private final DocumentoMedicoRepository documentoRepository;
     private final ResultadoExamenRepository resultadoRepository;
+    private final OrdenExamenRepository ordenExamenRepository;
     private final ReporteClinicoRepository reporteRepository;
     private final NotificacionService notificacionService;
     private final CitaService citaService;
@@ -71,8 +73,9 @@ public class ConsultaService {
     public ConsultaService(DoctorRepository doctorRepository, CitaRepository citaRepository,
                            HistoriaClinicaRepository historiaRepository, HistorialClinicoRepository historialRepository,
                            AtencionRepository atencionRepository, DocumentoMedicoRepository documentoRepository,
-                           ResultadoExamenRepository resultadoRepository, ReporteClinicoRepository reporteRepository,
-                           NotificacionService notificacionService, CitaService citaService) {
+                           ResultadoExamenRepository resultadoRepository, OrdenExamenRepository ordenExamenRepository,
+                           ReporteClinicoRepository reporteRepository, NotificacionService notificacionService,
+                           CitaService citaService) {
         this.doctorRepository = doctorRepository;
         this.citaRepository = citaRepository;
         this.historiaRepository = historiaRepository;
@@ -80,6 +83,7 @@ public class ConsultaService {
         this.atencionRepository = atencionRepository;
         this.documentoRepository = documentoRepository;
         this.resultadoRepository = resultadoRepository;
+        this.ordenExamenRepository = ordenExamenRepository;
         this.reporteRepository = reporteRepository;
         this.notificacionService = notificacionService;
         this.citaService = citaService;
@@ -193,6 +197,7 @@ public class ConsultaService {
                 .collect(Collectors.groupingBy(d -> d.getAtencion().getIdAtencion(),
                         Collectors.mapping(ConsultaService::respuesta, Collectors.toList())));
         Set<Integer> conDerivacion = Set.copyOf(reporteRepository.conDerivacion(ids));
+        Set<Integer> conOrdenExamen = Set.copyOf(ordenExamenRepository.findAtencionesConOrden(ids));
 
         return atenciones.stream()
                 .map(a -> new AtencionPreviaResponse(
@@ -204,6 +209,7 @@ public class ConsultaService {
                         a.getDoctor().getUsuario().getNombreCorto(),
                         a.getDoctor().getIdDoctor().equals(doctor.getIdDoctor()),
                         conDerivacion.contains(a.getIdAtencion()),
+                        conOrdenExamen.contains(a.getIdAtencion()),
                         a.getAnamnesis(),
                         a.getExamenFisico(),
                         a.getDiagnostico(),

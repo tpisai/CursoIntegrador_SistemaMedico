@@ -1,0 +1,106 @@
+<!-- Created with Jaspersoft Studio version 7.0.8.final using JasperReports Library version 7.0.8-6f896111 -->
+<jasperReport name="InformeLaboratorio" language="java" columnCount="1" pageWidth="595" pageHeight="842" columnWidth="515" leftMargin="40" rightMargin="40" topMargin="36" bottomMargin="36" uuid="1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d">
+	<parameter name="ANIO_OFICIAL" class="java.lang.String"/>
+	<parameter name="NUMERO_INFORME" class="java.lang.String"/>
+	<parameter name="DESTINATARIO_NOMBRE" class="java.lang.String"/>
+	<parameter name="DESTINATARIO_CARGO" class="java.lang.String"/>
+	<parameter name="REMITENTE_NOMBRE" class="java.lang.String"/>
+	<parameter name="REMITENTE_CARGO" class="java.lang.String"/>
+	<parameter name="ASUNTO" class="java.lang.String"/>
+	<parameter name="FECHA_DOCUMENTO" class="java.lang.String"/>
+	<parameter name="PERIODO_TEXTO" class="java.lang.String"/>
+	<parameter name="RESUMEN_CIERRE" class="java.lang.String"/>
+	<field name="descripcionActividad" class="java.lang.String"/>
+	<title height="260" splitType="Stretch">
+		<element kind="textField" uuid="a1b2c3d4-0000-4000-8000-000000000000" x="0" y="0" width="515" height="13" forecolor="#444444" fontName="SansSerif" fontSize="8.5" italic="true" hTextAlign="Center">
+			<expression><![CDATA[$P{ANIO_OFICIAL}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0001-4000-8000-000000000001" x="0" y="15" width="515" height="16" fontName="SansSerif" fontSize="11.0" bold="true" hTextAlign="Center">
+			<text><![CDATA[CENTRO DE SALUD MIGUEL GRAU · CHACLACAYO]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0002-4000-8000-000000000002" x="0" y="31" width="515" height="13" forecolor="#555555" fontName="SansSerif" fontSize="8.5" hTextAlign="Center">
+			<text><![CDATA[DIRIS Lima Este · Ministerio de Salud · A.H. Almte. Miguel Grau, Pje. 6, Chaclacayo]]></text>
+		</element>
+		<element kind="line" uuid="a1b2c3d4-0003-4000-8000-000000000003" x="0" y="48" width="515" height="1">
+			<pen lineWidth="1.2" lineColor="#1E3A8A"/>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0004-4000-8000-000000000004" x="0" y="58" width="515" height="18" fontName="SansSerif" fontSize="11.0" bold="true" underline="true" hTextAlign="Center">
+			<expression><![CDATA[$P{NUMERO_INFORME}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0005-4000-8000-000000000005" x="0" y="88" width="35" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[A]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0006-4000-8000-000000000006" x="62" y="88" width="10" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[:]]></text>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0007-4000-8000-000000000007" x="74" y="88" width="441" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<expression><![CDATA[$P{DESTINATARIO_NOMBRE}]]></expression>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0008-4000-8000-000000000008" x="74" y="102" width="441" height="14" fontName="SansSerif" fontSize="9.5">
+			<expression><![CDATA[$P{DESTINATARIO_CARGO}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0009-4000-8000-000000000009" x="0" y="124" width="35" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[DE]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0010-4000-8000-000000000010" x="62" y="124" width="10" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[:]]></text>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0011-4000-8000-000000000011" x="74" y="124" width="441" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<expression><![CDATA[$P{REMITENTE_NOMBRE}]]></expression>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0012-4000-8000-000000000012" x="74" y="138" width="441" height="14" fontName="SansSerif" fontSize="9.5">
+			<expression><![CDATA[$P{REMITENTE_CARGO}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0013-4000-8000-000000000013" x="0" y="160" width="58" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[ASUNTO]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0014-4000-8000-000000000014" x="62" y="160" width="10" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[:]]></text>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0015-4000-8000-000000000015" x="74" y="160" width="441" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<expression><![CDATA[$P{ASUNTO}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0016-4000-8000-000000000016" x="0" y="182" width="58" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[FECHA]]></text>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0017-4000-8000-000000000017" x="62" y="182" width="10" height="14" fontName="SansSerif" fontSize="10.0" bold="true">
+			<text><![CDATA[:]]></text>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0018-4000-8000-000000000018" x="74" y="182" width="441" height="14" fontName="SansSerif" fontSize="10.0">
+			<expression><![CDATA[$P{FECHA_DOCUMENTO}]]></expression>
+		</element>
+		<element kind="line" uuid="a1b2c3d4-0019-4000-8000-000000000019" x="0" y="202" width="515" height="1">
+			<pen lineWidth="0.8" lineColor="#111111"/>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0020-4000-8000-000000000020" x="0" y="212" width="515" height="40" fontName="SansSerif" fontSize="10.0" textAdjust="StretchHeight" hTextAlign="Justified">
+			<expression><![CDATA["Tengo el agrado de dirigirme a usted para saludarlo cordialmente y, a la vez, remitir el informe detallado de las actividades y solicitudes de laboratorio clínico atendidas durante el periodo de " + $P{PERIODO_TEXTO} + ":"]]></expression>
+		</element>
+	</title>
+	<detail>
+		<band height="22" splitType="Stretch">
+			<element kind="staticText" uuid="a1b2c3d4-0021-4000-8000-000000000021" x="14" y="2" width="12" height="16" fontName="SansSerif" fontSize="10.0" bold="true">
+				<text><![CDATA[•]]></text>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0022-4000-8000-000000000022" x="28" y="2" width="487" height="16" fontName="SansSerif" fontSize="10.0" textAdjust="StretchHeight" hTextAlign="Justified">
+				<expression><![CDATA[$F{descripcionActividad}]]></expression>
+			</element>
+		</band>
+	</detail>
+	<summary height="145" splitType="Stretch">
+		<element kind="textField" uuid="a1b2c3d4-0023-4000-8000-000000000023" x="0" y="12" width="515" height="36" fontName="SansSerif" fontSize="10.0" textAdjust="StretchHeight" hTextAlign="Justified">
+			<expression><![CDATA[$P{RESUMEN_CIERRE}]]></expression>
+		</element>
+		<element kind="staticText" uuid="a1b2c3d4-0024-4000-8000-000000000024" x="0" y="54" width="515" height="15" fontName="SansSerif" fontSize="10.0">
+			<text><![CDATA[Atentamente,]]></text>
+		</element>
+		<element kind="line" uuid="a1b2c3d4-0025-4000-8000-000000000025" x="157" y="106" width="200" height="1">
+			<pen lineWidth="0.8"/>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0026-4000-8000-000000000026" x="107" y="110" width="300" height="14" fontName="SansSerif" fontSize="9.5" bold="true" hTextAlign="Center">
+			<expression><![CDATA[$P{REMITENTE_NOMBRE}]]></expression>
+		</element>
+		<element kind="textField" uuid="a1b2c3d4-0027-4000-8000-000000000027" x="107" y="124" width="300" height="14" fontName="SansSerif" fontSize="9.0" hTextAlign="Center">
+			<expression><![CDATA[$P{REMITENTE_CARGO}]]></expression>
+		</element>
+	</summary>
+</jasperReport>

@@ -59,7 +59,15 @@ export function PortalNavbar({
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card text-foreground">
+    <header className="sticky top-0 z-40 border-b bg-card/95 text-foreground shadow-[0_2px_12px_rgb(14_60_90/0.05)] backdrop-blur">
+      <div className="bg-brand-strong text-brand-foreground">
+        <div className="mx-auto flex h-8 max-w-[1280px] items-center justify-between gap-4 px-4 text-xs sm:px-8">
+          <span className="truncate font-medium">Centro de Salud Miguel Grau · Chaclacayo</span>
+          <a href="tel:106" className="shrink-0 font-semibold outline-none hover:underline focus-visible:underline">
+            Emergencias: SAMU 106
+          </a>
+        </div>
+      </div>
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-3 px-4 sm:gap-6 sm:px-8 lg:h-[72px] lg:gap-8">
         <div className="flex items-center gap-3">
           <Link href={enlaces[0].href} className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -74,13 +82,13 @@ export function PortalNavbar({
         </div>
 
         <nav aria-label="Principal" className="hidden h-full lg:block">
-          <ul className="flex h-full items-center gap-7">
+          <ul className="flex h-full items-center gap-1.5">
             {enlaces.map((enlace) => (
-              <li key={enlace.href} className="h-full">
+              <li key={enlace.href}>
                 <Link
                   href={enlace.href}
                   aria-current={esActivo(pathname, enlace) ? "page" : undefined}
-                  className="relative flex h-full items-center text-sm font-medium text-muted-foreground outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-t-full after:bg-primary after:opacity-0 hover:text-foreground focus-visible:underline aria-[current=page]:font-semibold aria-[current=page]:text-primary aria-[current=page]:after:opacity-100"
+                  className="flex h-10 items-center rounded-full px-4 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
                 >
                   {enlace.texto}
                 </Link>
@@ -91,7 +99,7 @@ export function PortalNavbar({
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {usuario.rol === "PACIENTE" ? (
-            <Button asChild size="lg" className="mr-1 h-10 px-3.5">
+            <Button asChild variant="lime" size="lg" className="mr-1 h-10 rounded-full px-4">
               <Link href="/paciente/agendar">
                 <CalendarPlusIcon data-icon="inline-start" />
                 Agendar cita

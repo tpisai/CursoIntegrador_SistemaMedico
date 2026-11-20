@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { type DocumentoClinico, descargarDocumentoClinico, descargarDocumentoDePaciente } from "@/lib/api/consulta"
-import { descargarReceta } from "@/lib/api/doctor"
+import { descargarOrdenExamen, descargarReceta } from "@/lib/api/doctor"
 import { mensajeDeError } from "@/lib/api/http"
 import type { AtencionPrevia, MedicamentoRecetado } from "@/lib/api/types"
 import { guardarArchivo } from "@/lib/descargar"
@@ -126,6 +126,32 @@ export function DetalleAtencion({ atencion }: { atencion: AtencionPrevia }) {
               Descargar receta (PDF)
             </Button>
           ) : null}
+
+        </div>
+      ) : null}
+
+      {atencion.propia && atencion.tieneOrdenExamen ? (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Orden de exámenes</h4>
+          <Button
+            variant="outline"
+            className="h-11 self-start"
+            disabled={descargando === "orden-examen"}
+            onClick={() =>
+              descargar(
+                "orden-examen",
+                () => descargarOrdenExamen(atencion.idAtencion),
+                `orden-examenes-${atencion.idAtencion}.pdf`
+              )
+            }
+          >
+            {descargando === "orden-examen" ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <DownloadIcon data-icon="inline-start" />
+            )}
+            Descargar orden de exámenes (PDF)
+          </Button>
         </div>
       ) : null}
 

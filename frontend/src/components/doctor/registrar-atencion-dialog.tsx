@@ -482,13 +482,8 @@ export function RegistrarAtencionDialog({
                         </Button>
                       </div>
                     </FieldSet>
-                    <FieldSet>
-                      <FieldLegend variant="label">Orden de exámenes (opcional)</FieldLegend>
-                      <FieldDescription>
-                        Escribe un examen por línea. Si agregas exámenes, indica el motivo clínico.
-                      </FieldDescription>
                       <Field data-invalid={!!errores.examenesRequeridos}>
-                        <FieldLabel htmlFor="atencion-examenes-requeridos">Exámenes requeridos</FieldLabel>
+                        <FieldLabel htmlFor="atencion-examenes-requeridos">Examenes Requeridos</FieldLabel>
                         <Textarea
                           id="atencion-examenes-requeridos"
                           placeholder={"Ej. Hemograma completo\nGlucosa en ayunas"}
@@ -510,7 +505,6 @@ export function RegistrarAtencionDialog({
                         />
                         <FieldError>{errores.motivoClinico}</FieldError>
                       </Field>
-                    </FieldSet>
                     <Field>
                       <FieldLabel htmlFor="atencion-observaciones">Observaciones</FieldLabel>
                       <Textarea

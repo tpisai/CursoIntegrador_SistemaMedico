@@ -26,4 +26,11 @@ public interface ReporteClinicoRepository extends Repository<Atencion, Integer> 
             where a.idAtencion in :atenciones and s.cita = a.cita and s.tipo = 'DERIVACION'
             """)
     List<Integer> conDerivacion(@Param("atenciones") Collection<Integer> idsAtencion);
+
+    /** De las atenciones dadas, las que tienen una orden de exámenes. */
+    @Query("""
+            select o.atencion.idAtencion from OrdenExamen o
+            where o.atencion.idAtencion in :atenciones
+            """)
+    List<Integer> conOrdenExamen(@Param("atenciones") Collection<Integer> idsAtencion);
 }

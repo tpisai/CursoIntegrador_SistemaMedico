@@ -193,6 +193,7 @@ public class ConsultaService {
                 .collect(Collectors.groupingBy(d -> d.getAtencion().getIdAtencion(),
                         Collectors.mapping(ConsultaService::respuesta, Collectors.toList())));
         Set<Integer> conDerivacion = Set.copyOf(reporteRepository.conDerivacion(ids));
+        Set<Integer> conOrdenExamen = Set.copyOf(reporteRepository.conOrdenExamen(ids));
 
         return atenciones.stream()
                 .map(a -> new AtencionPreviaResponse(
@@ -204,6 +205,7 @@ public class ConsultaService {
                         a.getDoctor().getUsuario().getNombreCorto(),
                         a.getDoctor().getIdDoctor().equals(doctor.getIdDoctor()),
                         conDerivacion.contains(a.getIdAtencion()),
+                        conOrdenExamen.contains(a.getIdAtencion()),
                         a.getAnamnesis(),
                         a.getExamenFisico(),
                         a.getDiagnostico(),

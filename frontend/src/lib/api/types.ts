@@ -417,6 +417,7 @@ export interface AtencionPrevia {
   propia: boolean
   // La cita tiene una solicitud de derivación: se puede emitir la referencia.
   tieneDerivacion: boolean
+  tieneOrdenExamen: boolean
   anamnesis: string | null
   examenFisico: string | null
   diagnostico: string | null

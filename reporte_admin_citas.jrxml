@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SaludGrau - Reporte administrativo de citas (indicadores + graficos + detalle por doctor).
+     Parametros: fecha_inicio, fecha_fin (java.sql.Date). Base de datos: PostgreSQL. -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="reporte_admin_citas" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenNoDataType="AllSectionsNoDetail">
+	<subDataset name="dsEstado">
+		<parameter name="fecha_inicio" class="java.sql.Date"/>
+		<parameter name="fecha_fin" class="java.sql.Date"/>
+		<queryString><![CDATA[SELECT c.estado, COUNT(*) AS total
+FROM cita c JOIN horario h ON h.id_horario = c.id_horario
+WHERE h.fecha BETWEEN $P{fecha_inicio} AND $P{fecha_fin}
+GROUP BY c.estado ORDER BY total DESC]]></queryString>
+		<field name="estado" class="java.lang.String"/>
+		<field name="total" class="java.lang.Long"/>
+	</subDataset>
+	<subDataset name="dsEspecialidad">
+		<parameter name="fecha_inicio" class="java.sql.Date"/>
+		<parameter name="fecha_fin" class="java.sql.Date"/>
+		<queryString><![CDATA[SELECT e.nombre AS especialidad, COUNT(*) AS total
+FROM cita c
+JOIN horario h ON h.id_horario = c.id_horario
+JOIN doctor d ON d.id_doctor = h.id_doctor
+JOIN especialidad e ON e.id_especialidad = d.id_especialidad
+WHERE h.fecha BETWEEN $P{fecha_inicio} AND $P{fecha_fin}
+GROUP BY e.nombre ORDER BY total DESC]]></queryString>
+		<field name="especialidad" class="java.lang.String"/>
+		<field name="total" class="java.lang.Long"/>
+	</subDataset>
+	<subDataset name="dsMes">
+		<parameter name="fecha_inicio" class="java.sql.Date"/>
+		<parameter name="fecha_fin" class="java.sql.Date"/>
+		<queryString><![CDATA[SELECT TO_CHAR(h.fecha, 'YYYY-MM') AS mes, COUNT(*) AS total
+FROM cita c JOIN horario h ON h.id_horario = c.id_horario
+WHERE h.fecha BETWEEN $P{fecha_inicio} AND $P{fecha_fin}
+GROUP BY 1 ORDER BY 1]]></queryString>
+		<field name="mes" class="java.lang.String"/>
+		<field name="total" class="java.lang.Long"/>
+	</subDataset>
+	<parameter name="fecha_inicio" class="java.sql.Date"/>
+	<parameter name="fecha_fin" class="java.sql.Date"/>
+	<queryString><![CDATA[SELECT u.nombres || ' ' || u.apellidos AS doctor,
+       e.nombre AS especialidad,
+       COUNT(*) AS total,
+       COUNT(*) FILTER (WHERE c.estado = 'ATENDIDA') AS atendidas,
+       COUNT(*) FILTER (WHERE c.estado = 'CANCELADA') AS canceladas,
+       COUNT(*) FILTER (WHERE c.estado = 'NO_ASISTIO') AS no_asistio,
+       COALESCE(ROUND(100.0 * COUNT(*) FILTER (WHERE c.estado = 'ATENDIDA') / NULLIF(COUNT(*), 0), 1), 0) AS pct_atendidas
+FROM cita c
+JOIN horario h ON h.id_horario = c.id_horario
+JOIN doctor d ON d.id_doctor = h.id_doctor
+JOIN usuario u ON u.id_usuario = d.id_usuario
+JOIN especialidad e ON e.id_especialidad = d.id_especialidad
+WHERE h.fecha BETWEEN $P{fecha_inicio} AND $P{fecha_fin}
+GROUP BY u.nombres, u.apellidos, e.nombre
+ORDER BY total DESC, doctor]]></queryString>
+	<field name="doctor" class="java.lang.String"/>
+	<field name="especialidad" class="java.lang.String"/>
+	<field name="total" class="java.lang.Long"/>
+	<field name="atendidas" class="java.lang.Long"/>
+	<field name="canceladas" class="java.lang.Long"/>
+	<field name="no_asistio" class="java.lang.Long"/>
+	<field name="pct_atendidas" class="java.math.BigDecimal"/>
+	<variable name="sumTotal" class="java.lang.Long" calculation="Sum">
+		<variableExpression><![CDATA[$F{total}]]></variableExpression>
+	</variable>
+	<variable name="sumAtendidas" class="java.lang.Long" calculation="Sum">
+		<variableExpression><![CDATA[$F{atendidas}]]></variableExpression>
+	</variable>
+	<variable name="sumCanceladas" class="java.lang.Long" calculation="Sum">
+		<variableExpression><![CDATA[$F{canceladas}]]></variableExpression>
+	</variable>
+	<variable name="sumNoAsistio" class="java.lang.Long" calculation="Sum">
+		<variableExpression><![CDATA[$F{no_asistio}]]></variableExpression>
+	</variable>
+	<title>
+		<band height="492">
+			<rectangle>
+				<reportElement mode="Opaque" x="0" y="0" width="555" height="52" forecolor="#1F4E79" backcolor="#1F4E79"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="10" y="6" width="535" height="26" forecolor="#FFFFFF"/>
+				<textElement verticalAlignment="Middle"><font size="16" isBold="true"/></textElement>
+				<text><![CDATA[SaludGrau - Reporte administrativo de citas]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="10" y="32" width="535" height="16" forecolor="#FFFFFF"/>
+				<textElement verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA["Periodo: " + new java.text.SimpleDateFormat("dd/MM/yyyy").format($P{fecha_inicio}) + " al " + new java.text.SimpleDateFormat("dd/MM/yyyy").format($P{fecha_fin})]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="0" y="60" width="130" height="52" forecolor="#1F4E79"/>
+				<graphicElement><pen lineWidth="0.75"/></graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="0" y="64" width="130" height="16" forecolor="#1F4E79"/>
+				<textElement textAlignment="Center"><font size="9"/></textElement>
+				<text><![CDATA[Total de citas]]></text>
+			</staticText>
+			<textField evaluationTime="Report">
+				<reportElement x="0" y="82" width="130" height="26"/>
+				<textElement textAlignment="Center"><font size="18" isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[$V{sumTotal} == null ? 0 : $V{sumTotal}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="141" y="60" width="130" height="52" forecolor="#1F4E79"/>
+				<graphicElement><pen lineWidth="0.75"/></graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="141" y="64" width="130" height="16" forecolor="#1F4E79"/>
+				<textElement textAlignment="Center"><font size="9"/></textElement>
+				<text><![CDATA[Atendidas]]></text>
+			</staticText>
+			<textField evaluationTime="Report">
+				<reportElement x="141" y="82" width="130" height="26"/>
+				<textElement textAlignment="Center"><font size="18" isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[$V{sumAtendidas} == null ? 0 : $V{sumAtendidas}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="283" y="60" width="130" height="52" forecolor="#1F4E79"/>
+				<graphicElement><pen lineWidth="0.75"/></graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="283" y="64" width="130" height="16" forecolor="#1F4E79"/>
+				<textElement textAlignment="Center"><font size="9"/></textElement>
+				<text><![CDATA[Canceladas / No asistió]]></text>
+			</staticText>
+			<textField evaluationTime="Report">
+				<reportElement x="283" y="82" width="130" height="26"/>
+				<textElement textAlignment="Center"><font size="18" isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[($V{sumCanceladas} == null ? 0 : $V{sumCanceladas}) + " / " + ($V{sumNoAsistio} == null ? 0 : $V{sumNoAsistio})]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="425" y="60" width="130" height="52" forecolor="#1F4E79"/>
+				<graphicElement><pen lineWidth="0.75"/></graphicElement>
+			</rectangle>
+			<staticText>
+				<reportElement x="425" y="64" width="130" height="16" forecolor="#1F4E79"/>
+				<textElement textAlignment="Center"><font size="9"/></textElement>
+				<text><![CDATA[% de citas atendidas]]></text>
+			</staticText>
+			<textField evaluationTime="Report">
+				<reportElement x="425" y="82" width="130" height="26"/>
+				<textElement textAlignment="Center"><font size="18" isBold="true"/></textElement>
+				<textFieldExpression><![CDATA[$V{sumTotal} == null || $V{sumTotal} == 0 ? "0.0%" : String.format("%.1f%%", 100.0 * $V{sumAtendidas} / $V{sumTotal})]]></textFieldExpression>
+			</textField>
+			<pieChart>
+				<chart evaluationTime="Report" isShowLegend="true">
+					<reportElement x="0" y="125" width="270" height="170"/>
+					<chartTitle><font size="11" isBold="true"/><titleExpression><![CDATA["Citas por estado"]]></titleExpression></chartTitle>
+					<chartSubtitle/>
+					<chartLegend/>
+				</chart>
+				<pieDataset>
+					<dataset>
+						<datasetRun subDataset="dsEstado">
+					<datasetParameter name="fecha_inicio"><datasetParameterExpression><![CDATA[$P{fecha_inicio}]]></datasetParameterExpression></datasetParameter>
+					<datasetParameter name="fecha_fin"><datasetParameterExpression><![CDATA[$P{fecha_fin}]]></datasetParameterExpression></datasetParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				</datasetRun>
+					</dataset>
+					<keyExpression><![CDATA[$F{estado}]]></keyExpression>
+					<valueExpression><![CDATA[$F{total}]]></valueExpression>
+				</pieDataset>
+				<piePlot>
+					<plot/>
+					<itemLabel/>
+				</piePlot>
+			</pieChart>
+			<barChart>
+				<chart evaluationTime="Report" isShowLegend="false">
+					<reportElement x="285" y="125" width="270" height="170"/>
+					<chartTitle><font size="11" isBold="true"/><titleExpression><![CDATA["Citas por especialidad"]]></titleExpression></chartTitle>
+					<chartSubtitle/>
+					<chartLegend/>
+				</chart>
+				<categoryDataset>
+					<dataset>
+						<datasetRun subDataset="dsEspecialidad">
+					<datasetParameter name="fecha_inicio"><datasetParameterExpression><![CDATA[$P{fecha_inicio}]]></datasetParameterExpression></datasetParameter>
+					<datasetParameter name="fecha_fin"><datasetParameterExpression><![CDATA[$P{fecha_fin}]]></datasetParameterExpression></datasetParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				</datasetRun>
+					</dataset>
+					<categorySeries>
+						<seriesExpression><![CDATA["Citas"]]></seriesExpression>
+						<categoryExpression><![CDATA[$F{especialidad}]]></categoryExpression>
+						<valueExpression><![CDATA[$F{total}]]></valueExpression>
+					</categorySeries>
+				</categoryDataset>
+				<barPlot isShowLabels="true">
+					<plot><seriesColor seriesOrder="0" color="#1F4E79"/></plot>
+					<itemLabel/>
+					<categoryAxisFormat><axisFormat/></categoryAxisFormat>
+					<valueAxisFormat><axisFormat/></valueAxisFormat>
+				</barPlot>
+			</barChart>
+			<barChart>
+				<chart evaluationTime="Report" isShowLegend="false">
+					<reportElement x="0" y="305" width="555" height="160"/>
+					<chartTitle><font size="11" isBold="true"/><titleExpression><![CDATA["Citas por mes"]]></titleExpression></chartTitle>
+					<chartSubtitle/>
+					<chartLegend/>
+				</chart>
+				<categoryDataset>
+					<dataset>
+						<datasetRun subDataset="dsMes">
+					<datasetParameter name="fecha_inicio"><datasetParameterExpression><![CDATA[$P{fecha_inicio}]]></datasetParameterExpression></datasetParameter>
+					<datasetParameter name="fecha_fin"><datasetParameterExpression><![CDATA[$P{fecha_fin}]]></datasetParameterExpression></datasetParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				</datasetRun>
+					</dataset>
+					<categorySeries>
+						<seriesExpression><![CDATA["Citas"]]></seriesExpression>
+						<categoryExpression><![CDATA[$F{mes}]]></categoryExpression>
+						<valueExpression><![CDATA[$F{total}]]></valueExpression>
+					</categorySeries>
+				</categoryDataset>
+				<barPlot isShowLabels="true">
+					<plot><seriesColor seriesOrder="0" color="#1F4E79"/></plot>
+					<itemLabel/>
+					<categoryAxisFormat><axisFormat/></categoryAxisFormat>
+					<valueAxisFormat><axisFormat/></valueAxisFormat>
+				</barPlot>
+			</barChart>
+			<staticText>
+				<reportElement x="0" y="470" width="555" height="18"/>
+				<textElement verticalAlignment="Middle"><font size="11" isBold="true"/></textElement>
+				<text><![CDATA[Detalle por doctor]]></text>
+			</staticText>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="20">
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="150" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[Doctor]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="150" y="0" width="120" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[Especialidad]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="270" y="0" width="50" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="320" y="0" width="60" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[Atendidas]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="380" y="0" width="65" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[Canceladas]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="445" y="0" width="60" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[No asistió]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="505" y="0" width="50" height="20" forecolor="#FFFFFF" backcolor="#1F4E79"/>
+				<box leftPadding="4" rightPadding="4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+				<text><![CDATA[% atend.]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="18">
+			<textField>
+				<reportElement x="0" y="0" width="150" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Left" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{doctor}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="150" y="0" width="120" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Left" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{especialidad}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="270" y="0" width="50" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{total}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="320" y="0" width="60" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{atendidas}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="0" width="65" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{canceladas}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="445" y="0" width="60" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{no_asistio}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="505" y="0" width="50" height="18"/>
+				<box leftPadding="4" rightPadding="4"><bottomPen lineWidth="0.25" lineColor="#BBBBBB"/></box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"><font size="9"/></textElement>
+				<textFieldExpression><![CDATA[$F{pct_atendidas} + "%"]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="20">
+			<textField>
+				<reportElement x="0" y="2" width="555" height="16"/>
+				<textElement textAlignment="Right"><font size="8"/></textElement>
+				<textFieldExpression><![CDATA["Página " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+</jasperReport>

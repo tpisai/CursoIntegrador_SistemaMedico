@@ -121,6 +121,24 @@ export interface ReporteCitas {
   porDoctor: FilaReporte[]
 }
 
+export interface FilaOcupacion {
+  nombre: string
+  detalle: string | null
+  ofertados: number
+  ocupados: number
+  disponibles: number
+  cancelados: number
+  porcentajeOcupacion: number
+}
+
+export interface ReporteOcupacionHorarios {
+  desde: string
+  hasta: string
+  totales: FilaOcupacion
+  porEspecialidad: FilaOcupacion[]
+  porDoctor: FilaOcupacion[]
+}
+
 export interface ReservarCitaRequest {
   idHorario: number
   motivo?: string
@@ -347,7 +365,7 @@ export interface TicketRecepcion {
   validadoEn: string | null
 }
 
-export type EstadoCampania ="PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
+export type EstadoCampania = "PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
 
 export interface CrearCampaniaRequest {
   titulo: string

@@ -15,6 +15,7 @@ export const rutasAdmin = {
   solicitudes: "/admin/solicitudes",
   campanias: "/admin/campanias",
   reporteCitas: (desde: string, hasta: string) => `/admin/reportes/citas?desde=${desde}&hasta=${hasta}`,
+  reporteHorarios: (desde: string, hasta: string) => `/admin/reportes/horarios?desde=${desde}&hasta=${hasta}`,
 }
 
 export function descargarReferenciaSolicitud(idSolicitud: number) {

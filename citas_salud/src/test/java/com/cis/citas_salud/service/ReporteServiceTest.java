@@ -1,11 +1,15 @@
 package com.cis.citas_salud.service;
 
 import com.cis.citas_salud.api.ApiException;
+import com.cis.citas_salud.api.dto.AdminDto.FilaOcupacion;
 import com.cis.citas_salud.api.dto.AdminDto.FilaReporte;
+import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.entity.Cita;
+import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.repository.CitaRepository;
+import com.cis.citas_salud.repository.HorarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/** EDT 4.8: reporte de control de citas y ausentismo. */
+/** EDT 4.8: reporte de control de citas, ausentismo y ocupación de horarios. */
 @ExtendWith(MockitoExtension.class)
 class ReporteServiceTest {
 
@@ -34,13 +38,15 @@ class ReporteServiceTest {
     private AdminService adminService;
     @Mock
     private CitaRepository citaRepository;
+    @Mock
+    private HorarioRepository horarioRepository;
 
     private ReporteService servicio;
     private final UsuarioSesion sesion = new UsuarioSesion(1, UsuarioSesion.ADMINISTRADOR);
 
     @BeforeEach
     void preparar() {
-        servicio = new ReporteService(adminService, citaRepository);
+        servicio = new ReporteService(adminService, citaRepository, horarioRepository);
     }
 
     private static Object[] fila(String especialidad, String nombres, String apellidos, String estado, long citas) {
@@ -138,5 +144,22 @@ class ReporteServiceTest {
         exigeError(HttpStatus.FORBIDDEN, () -> servicio.citas(sesion, DESDE, HASTA));
 
         verifyNoInteractions(citaRepository);
+    }
+
+    @Test
+    void calculaOcupacionDeHorariosPorEspecialidadYDoctor() {
+        when(horarioRepository.conteoOcupacion(DESDE, HASTA)).thenReturn(List.of(
+                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.RESERVADO, 3),
+                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.DISPONIBLE, 1),
+                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.CANCELADO, 1)));
+
+        ReporteOcupacionResponse reporte = servicio.ocupacionHorarios(sesion, DESDE, HASTA);
+        FilaOcupacion totales = reporte.totales();
+
+        assertEquals(5, totales.ofertados());
+        assertEquals(3, totales.ocupados());
+        assertEquals(1, totales.disponibles());
+        assertEquals(1, totales.cancelados());
+        assertEquals(75, totales.porcentajeOcupacion());
     }
 }

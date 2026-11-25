@@ -4,6 +4,7 @@ import com.cis.citas_salud.api.dto.AdminDto.CampaniaAdminResponse;
 import com.cis.citas_salud.api.dto.AdminDto.CrearCampaniaRequest;
 import com.cis.citas_salud.api.dto.AdminDto.CrearHorariosRequest;
 import com.cis.citas_salud.api.dto.AdminDto.CrearHorariosResponse;
+import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.ResumenResponse;
@@ -13,9 +14,9 @@ import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.AdminService;
 import com.cis.citas_salud.service.CampaniaService;
 import com.cis.citas_salud.service.RecepcionService;
-import com.cis.citas_salud.service.ReporteService;
-import com.cis.citas_salud.service.ReporteIntegralCitasService;
 import com.cis.citas_salud.service.ReporteClinicoService;
+import com.cis.citas_salud.service.ReporteIntegralCitasService;
+import com.cis.citas_salud.service.ReporteService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -68,6 +69,14 @@ public class AdminController {
             @RequestParam(value = "desde", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(value = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return reporteService.citas(sesion, desde, hasta);
+    }
+
+    @GetMapping("/reportes/horarios")
+    public ReporteOcupacionResponse reporteOcupacionHorarios(
+            UsuarioSesion sesion,
+            @RequestParam(value = "desde", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(value = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return reporteService.ocupacionHorarios(sesion, desde, hasta);
     }
 
     @GetMapping("/reportes/citas-integral/pdf")

@@ -37,4 +37,16 @@ public interface HorarioRepository extends JpaRepository<Horario, Integer> {
     @EntityGraph(attributePaths = "consultorio")
     List<Horario> findByDoctor_IdDoctorAndFechaBetweenAndEstadoOrderByFechaAscHoraInicioAsc(
             Integer idDoctor, LocalDate desde, LocalDate hasta, String estado);
+
+    /** Consulta administrativa: agrupa turnos ofertados por especialidad, doctor y estado. */
+    @Query("""
+            select e.nombre, u.nombres, u.apellidos, h.estado, count(h)
+            from Horario h
+            join h.doctor d
+            join d.especialidad e
+            join d.usuario u
+            where h.fecha between :desde and :hasta
+            group by e.nombre, u.nombres, u.apellidos, h.estado
+            """)
+    List<Object[]> conteoOcupacion(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
 }

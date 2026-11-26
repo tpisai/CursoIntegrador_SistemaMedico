@@ -1,6 +1,7 @@
 package com.cis.citas_salud.service;
 
 import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -19,8 +20,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Llena las plantillas de JasperReports que traen su propia consulta SQL. La consulta se ejecuta con una
- * conexión del pool de la aplicación, así que el reporte lee la misma base que el resto del sistema.
+ * Compila y exporta plantillas JasperReports, usando la conexión de la aplicación para plantillas SQL o
+ * una fuente de datos preparada por el servicio llamador.
  */
 @Component
 public class GeneradorReportesSql {
@@ -43,6 +44,17 @@ public class GeneradorReportesSql {
             return JasperExportManager.exportReportToPdf(impresion);
         } catch (SQLException e) {
             throw new IllegalStateException("No se pudo conectar a la base de datos para generar el reporte.", e);
+        } catch (JRException e) {
+            throw new IllegalStateException("No se pudo generar el reporte " + plantilla + ".", e);
+        }
+    }
+
+    /** PDF de la plantilla Jasper con una fuente de datos preparada por el servicio llamador. */
+    public byte[] pdf(String plantilla, Map<String, Object> parametros, JRDataSource origen) {
+        JasperReport reporte = compilados.computeIfAbsent(plantilla, GeneradorReportesSql::compilar);
+        try {
+            JasperPrint impresion = JasperFillManager.fillReport(reporte, new HashMap<>(parametros), origen);
+            return JasperExportManager.exportReportToPdf(impresion);
         } catch (JRException e) {
             throw new IllegalStateException("No se pudo generar el reporte " + plantilla + ".", e);
         }

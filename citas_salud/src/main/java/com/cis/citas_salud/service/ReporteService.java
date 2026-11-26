@@ -1,176 +1,181 @@
-package com.cis.citas_salud.service;
+package com.cis.citas_salud.api.dto;
 
-import com.cis.citas_salud.api.ApiException;
-import com.cis.citas_salud.api.dto.AdminDto.FilaOcupacion;
-import com.cis.citas_salud.api.dto.AdminDto.FilaReporte;
-import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
-import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
-import com.cis.citas_salud.api.seguridad.UsuarioSesion;
-import com.cis.citas_salud.entity.Cita;
-import com.cis.citas_salud.entity.Horario;
-import com.cis.citas_salud.repository.CitaRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
-/** Reportes de control de administración: citas/ausentismo y ocupación de capacidad horaria. */
-@Service
-@Transactional(readOnly = true)
-public class ReporteService {
+/** Panel de administración y recepción (pantalla 04 del prototipo). */
+public final class AdminDto {
 
-    private static final int MAX_DIAS = 366;
-
-    private final AdminService adminService;
-    private final CitaRepository citaRepository;
-    private final HorarioRepository horarioRepository;
-
-    public ReporteService(AdminService adminService, CitaRepository citaRepository, HorarioRepository horarioRepository) {
-        this.adminService = adminService;
-        this.citaRepository = citaRepository;
-        this.horarioRepository = horarioRepository;
+    private AdminDto() {
     }
 
-    /** Sin fechas, muestra el mes en curso hasta hoy. */
-    public ReporteResponse citas(UsuarioSesion sesion, LocalDate desde, LocalDate hasta) {
-        adminService.personal(sesion);
-        LocalDate fin = hasta != null ? hasta : LocalDate.now();
-        LocalDate inicio = desde != null ? desde : fin.withDayOfMonth(1);
-        validarRango(inicio, fin);
-
-        Conteo totales = new Conteo("Total", null);
-        Map<String, Conteo> especialidades = new LinkedHashMap<>();
-        Map<String, Conteo> doctores = new LinkedHashMap<>();
-        for (Object[] fila : citaRepository.conteoParaReporte(inicio, fin)) {
-            String especialidad = (String) fila[0];
-            String doctor = fila[1] + " " + fila[2];
-            String estado = (String) fila[3];
-            long citas = (Long) fila[4];
-            totales.sumar(estado, citas);
-            especialidades.computeIfAbsent(especialidad, e -> new Conteo(e, null)).sumar(estado, citas);
-            doctores.computeIfAbsent(doctor, d -> new Conteo(d, especialidad)).sumar(estado, citas);
-        }
-        return new ReporteResponse(Formato.fecha(inicio), Formato.fecha(fin), totales.fila(),
-                ordenadas(especialidades), ordenadas(doctores));
+    // Reporte de control (EDT 4.8).
+    public record FilaReporte(
+            Integer idEspecialidad,
+            Integer idDoctor,
+            String nombre,
+            // Especialidad del doctor; vacío en las demás filas.
+            String detalle,
+            long total,
+            long atendidas,
+            long noAsistio,
+            long canceladas,
+            long pendientes,
+            // % de citas cerradas a las que el paciente no asistió.
+            int ausentismo) {
     }
 
-    /** Consulta administrativa: aprovechamiento y ocupación de turnos ofertados en agenda. */
-    public ReporteOcupacionResponse ocupacionHorarios(UsuarioSesion sesion, LocalDate desde, LocalDate hasta) {
-        adminService.personal(sesion);
-        LocalDate fin = hasta != null ? hasta : LocalDate.now().plusDays(15);
-        LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfMonth(1);
-        validarRango(inicio, fin);
-
-        ConteoOcupacion totales = new ConteoOcupacion("Total", null);
-        Map<String, ConteoOcupacion> especialidades = new LinkedHashMap<>();
-        Map<String, ConteoOcupacion> doctores = new LinkedHashMap<>();
-
-        for (Object[] fila : horarioRepository.conteoOcupacion(inicio, fin)) {
-            String especialidad = (String) fila[0];
-            String doctor = fila[1] + " " + fila[2];
-            String estado = (String) fila[3];
-            long cantidad = (Long) fila[4];
-
-            totales.sumar(estado, cantidad);
-            especialidades.computeIfAbsent(especialidad, e -> new ConteoOcupacion(e, null)).sumar(estado, cantidad);
-            doctores.computeIfAbsent(doctor, d -> new ConteoOcupacion(d, especialidad)).sumar(estado, cantidad);
-        }
-
-        return new ReporteOcupacionResponse(
-                Formato.fecha(inicio),
-                Formato.fecha(fin),
-                totales.fila(),
-                ordenadasOcupacion(especialidades),
-                ordenadasOcupacion(doctores));
+    public record ReporteResponse(
+            String desde,
+            String hasta,
+            FilaReporte totales,
+            List<FilaReporte> porEspecialidad,
+            List<FilaReporte> porDoctor) {
     }
 
-    private static void validarRango(LocalDate inicio, LocalDate fin) {
-        if (fin.isBefore(inicio)) {
-            throw ApiException.datosInvalidos("La fecha final debe ser igual o posterior a la inicial.");
-        }
-        if (ChronoUnit.DAYS.between(inicio, fin) > MAX_DIAS) {
-            throw ApiException.datosInvalidos("El reporte abarca como máximo un año.");
-        }
+    public record OpcionReporte(Integer id, String nombre, String detalle) {
     }
 
-    private static List<FilaReporte> ordenadas(Map<String, Conteo> conteos) {
-        return conteos.values().stream()
-                .map(Conteo::fila)
-                .sorted(Comparator.comparingLong(FilaReporte::total).reversed().thenComparing(FilaReporte::nombre))
-                .toList();
+    public record FiltrosReporteResponse(
+            List<OpcionReporte> especialidades,
+            List<OpcionReporte> doctores) {
     }
 
-    private static List<FilaOcupacion> ordenadasOcupacion(Map<String, ConteoOcupacion> conteos) {
-        return conteos.values().stream()
-                .map(ConteoOcupacion::fila)
-                .sorted(Comparator.comparingLong(FilaOcupacion::ofertados).reversed().thenComparing(FilaOcupacion::nombre))
-                .toList();
+    // Consulta administrativa de capacidad y ocupación de horarios ofertados.
+    public record FilaOcupacion(
+            String nombre,
+            String detalle,
+            long ofertados,
+            long ocupados,
+            long disponibles,
+            long cancelados,
+            // % de turnos ofertados que fueron reservados o finalizados.
+            int porcentajeOcupacion) {
     }
 
-    private static final class Conteo {
-        private final String nombre;
-        private final String detalle;
-        private long total;
-        private long atendidas;
-        private long noAsistio;
-        private long canceladas;
-        private long pendientes;
-
-        private Conteo(String nombre, String detalle) {
-            this.nombre = nombre;
-            this.detalle = detalle;
-        }
-
-        private void sumar(String estado, long citas) {
-            total += citas;
-            switch (estado) {
-                case Cita.ATENDIDA -> atendidas += citas;
-                case Cita.NO_ASISTIO -> noAsistio += citas;
-                case Cita.CANCELADA -> canceladas += citas;
-                default -> pendientes += citas;
-            }
-        }
-
-        private FilaReporte fila() {
-            long cerradas = atendidas + noAsistio;
-            int ausentismo = cerradas == 0 ? 0 : (int) Math.round(100.0 * noAsistio / cerradas);
-            return new FilaReporte(nombre, detalle, total, atendidas, noAsistio, canceladas, pendientes, ausentismo);
-        }
+    public record ReporteOcupacionResponse(
+            String desde,
+            String hasta,
+            FilaOcupacion totales,
+            List<FilaOcupacion> porEspecialidad,
+            List<FilaOcupacion> porDoctor) {
     }
 
-    private static final class ConteoOcupacion {
-        private final String nombre;
-        private final String detalle;
-        private long ofertados;
-        private long ocupados;
-        private long disponibles;
-        private long cancelados;
+    public record ResumenResponse(
+            long citasHoy,
+            long solicitudesPendientes,
+            long campaniasVigentes,
+            // % de citas del mes en curso a las que el paciente no asistió.
+            int ausentismoMes) {
+    }
 
-        private ConteoOcupacion(String nombre, String detalle) {
-            this.nombre = nombre;
-            this.detalle = detalle;
-        }
+    public record SolicitudAdminResponse(
+            Integer idSolicitud,
+            String tipo,
+            String estado,
+            String fechaSolicitud,
+            String doctor,
+            String especialidad,
+            String paciente,
+            String dniPaciente,
+            String fechaCita,
+            String horaCita,
+            // Nueva fecha propuesta o establecimiento de destino, ya en texto.
+            String detalle,
+            String motivo,
+            String respuestaAdmin,
+            Integer idAtencion) {
+    }
 
-        private void sumar(String estado, long cantidad) {
-            ofertados += cantidad;
-            switch (estado) {
-                case Horario.RESERVADO, Horario.FINALIZADO -> ocupados += cantidad;
-                case Horario.DISPONIBLE -> disponibles += cantidad;
-                case Horario.CANCELADO -> cancelados += cantidad;
-                default -> disponibles += cantidad;
-            }
-        }
+    public enum Decision { APROBAR, RECHAZAR }
 
-        private FilaOcupacion fila() {
-            long activos = ofertados - cancelados;
-            int porcentaje = activos <= 0 ? 0 : (int) Math.round(100.0 * ocupados / activos);
-            return new FilaOcupacion(nombre, detalle, ofertados, ocupados, disponibles, cancelados, porcentaje);
-        }
+    public record ResponderSolicitudRequest(
+            @NotNull(message = "Elige si apruebas o rechazas la solicitud.") Decision decision,
+            @Size(max = 500, message = "La respuesta es demasiado larga.") String respuesta) {
+    }
+
+    // RF-13: el personal define los turnos de un doctor para un día.
+    public record CrearHorariosRequest(
+            @NotNull(message = "Elige al doctor.") Integer idDoctor,
+            @NotNull(message = "Elige el consultorio.") Integer idConsultorio,
+            @NotNull(message = "Elige la fecha.") LocalDate fecha,
+            @NotNull(message = "Indica la hora de inicio.") LocalTime horaInicio,
+            @NotNull(message = "Indica la hora de fin.") LocalTime horaFin,
+            @NotNull(message = "Elige la duración de cada turno.")
+            @Min(value = 10, message = "Cada turno dura al menos 10 minutos.")
+            @Max(value = 120, message = "Cada turno dura como máximo 120 minutos.") Integer duracionMinutos) {
+    }
+
+    public record CrearHorariosResponse(
+            int creados,
+            // Turnos que se cruzaban con otros ya existentes de ese doctor.
+            int omitidos,
+            String fecha,
+            String doctor,
+            String consultorio) {
+    }
+
+    // RF-12: resultado de buscar o validar un ticket en recepción.
+    public enum ResultadoTicket {
+        // Cita activa de hoy, aún sin validar: el paciente puede pasar.
+        VALIDO,
+        // Recepción ya registró la llegada del paciente.
+        YA_VALIDADO,
+        // La cita es de otro día.
+        OTRO_DIA,
+        // La cita fue cancelada, atendida o marcada como inasistencia.
+        NO_ACTIVA
+    }
+
+    public record TicketResponse(
+            Integer idCita,
+            String numeroTicket,
+            String estado,
+            String paciente,
+            String dniPaciente,
+            String especialidad,
+            String doctor,
+            String fecha,
+            String horaInicio,
+            String consultorio,
+            ResultadoTicket resultado,
+            // Indicación para recepción, lista para mostrar.
+            String mensaje,
+            // "YYYY-MM-DDTHH:mm:ss" de la validación; null si aún no se valida.
+            String validadoEn) {
+    }
+
+    // RF-20: nueva campaña médica.
+    public record CrearCampaniaRequest(
+            @NotBlank(message = "Escribe el título de la campaña.") @Size(max = 150, message = "El título es demasiado largo.") String titulo,
+            @Size(max = 2000, message = "La descripción es demasiado larga.") String descripcion,
+            @NotNull(message = "Indica la fecha de inicio.") LocalDate fechaInicio,
+            @NotNull(message = "Indica la fecha de fin.") LocalDate fechaFin,
+            LocalTime hora,
+            @Size(max = 255, message = "El lugar es demasiado largo.") String lugar,
+            @NotNull(message = "Indica la cantidad de cupos.")
+            @Min(value = 1, message = "La campaña necesita al menos 1 cupo.")
+            @Max(value = 10000, message = "El máximo es 10 000 cupos.") Integer cupos) {
+    }
+
+    public record CampaniaAdminResponse(
+            Integer idCampania,
+            String titulo,
+            String descripcion,
+            String fechaInicio,
+            String fechaFin,
+            String hora,
+            String lugar,
+            String estado,
+            int cupos,
+            int cuposDisponibles,
+            long inscritos) {
     }
 }

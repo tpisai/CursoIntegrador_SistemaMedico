@@ -18,5 +18,9 @@ public interface DoctorRepository extends JpaRepository<Doctor, Integer> {
     @EntityGraph(attributePaths = "consultorios")
     List<Doctor> findByEstado(String estado);
 
+    @EntityGraph(attributePaths = {"usuario", "especialidad"})
+    List<Doctor> findByEstadoOrderByIdDoctor(String estado);
+
     boolean existsByCmp(String cmp);
 }
+

@@ -94,7 +94,11 @@ consultorio, así que no aparece en la reserva en línea.
 | `/doctor/solicitudes`    | Pedir cambio de fecha o derivación y seguir la respuesta | RF-15, RF-16     |
 | `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
-| `/admin/reportes`        | Control de citas, ocupación de horarios, reportes integrales de citas y de morbilidad/prescripción | EDT 4.8 |
+| `/admin/reportes`        | Reportes de control con menú lateral; abre el primero (`/admin/reportes/citas`) | EDT 4.8 |
+| `/admin/reportes/citas`  | Citas y ausentismo, con filtros por especialidad, doctor y estado | EDT 4.8 |
+| `/admin/reportes/integral` | Reporte integral de citas en PDF                   | EDT 4.8              |
+| `/admin/reportes/horarios` | Capacidad y ocupación de horarios ofertados        | EDT 4.8              |
+| `/admin/reportes/prescripcion` | Morbilidad y prescripción médica               | EDT 4.8              |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
 
 Al registrar una atención, el doctor puede solicitar exámenes de forma opcional: escribe un examen
@@ -173,6 +177,17 @@ Para agregar otra plantilla con SQL:
    `Unable to load report`.
 2. Usa parámetros para los filtros (`$P{ID_ATENCION}`) y déjala en `src/main/resources/reports`.
 3. Agrégala a `PlantillasClinicasTest`: la prueba la compila y avisa si el formato o el diseño no son válidos.
+
+### Reportes de administración (EDT 4.8)
+
+Cada reporte es una página propia bajo `/admin/reportes` y el menú de la izquierda cambia de uno a otro (en
+celular es una fila que se desliza). Así un reporte nuevo no alarga la página de los demás.
+
+Para agregar un reporte:
+
+1. Crea su componente en `src/components/admin/`.
+2. Crea la página `src/app/admin/reportes/<ruta>/page.tsx`, que solo lo muestra.
+3. Añádelo a `REPORTES_ADMIN` en `src/lib/admin/reportes.ts` con su título, una línea de descripción y un icono.
 
 ## Formularios de entrada de datos
 
@@ -292,7 +307,8 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/atenciones/{id}/referencia`                                | PDF de la referencia a otro establecimiento. 409 si la cita no tiene solicitud de derivación |
 | `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
-| `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
+| `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...&estado=...` | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso. Los tres filtros son opcionales; `estado` es un estado de cita (400 si no existe) |
+| `GET`   | `/admin/reportes/filtros`                                           | Opciones de los filtros: especialidades y doctores activos (`detalle` del doctor = su especialidad) |
 | `GET`   | `/admin/reportes/horarios?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`        | Capacidad y ocupación de horarios por especialidad y doctor |
 | `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&secciones=...` | PDF administrativo con gráficos y hasta cinco consultas; las secciones se filtran con `RESUMEN`, `ESPECIALIDAD`, `DOCTORES`, `CAMBIOS`, `DERIVACIONES` |
 | `GET`   | `/admin/reportes/prescripcion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...` | JSON de indicadores, medicamentos, diagnósticos, recetas por médico y tendencia semanal; especialidad y médico son opcionales |

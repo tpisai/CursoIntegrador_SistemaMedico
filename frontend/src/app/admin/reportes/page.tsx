@@ -1,30 +1,8 @@
-import type { Metadata } from "next"
-import { ChartColumnIcon } from "lucide-react"
+import { redirect } from "next/navigation"
 
-import { ReporteCitas } from "@/components/admin/reporte-citas"
-import { ReporteCitasIntegral } from "@/components/admin/reporte-citas-integral"
-import { ReporteOcupacionHorarios } from "@/components/admin/reporte-ocupacion-horarios"
-import { HeroSeccion } from "@/components/portal/hero-seccion"
-import { ReportePrescripcionClinica } from "@/components/admin/reporte-prescripcion-clinica"
-import { Encabezado } from "@/components/portal/encabezado"
+import { REPORTE_INICIAL } from "@/lib/admin/reportes"
 
-export const metadata: Metadata = {
-  title: "Reportes",
-}
-
+// /admin/reportes abre el primer reporte del menú.
 export default function ReportesPage() {
-  return (
-    <>
-      <HeroSeccion
-        etiqueta="Administración"
-        titulo="Reportes de control"
-        descripcion="Revisa las citas atendidas, el ausentismo y la capacidad de horarios ofertados por especialidad y doctor. Descarga el reporte integral en PDF."
-        Icono={ChartColumnIcon}
-      />
-      <ReporteCitas />
-      <ReporteCitasIntegral />
-      <ReporteOcupacionHorarios />
-      <ReportePrescripcionClinica />
-    </>
-  )
+  redirect(REPORTE_INICIAL)
 }

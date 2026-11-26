@@ -38,6 +38,26 @@ public final class AdminDto {
             List<FilaReporte> porDoctor) {
     }
 
+    // Consulta administrativa de capacidad y ocupación de horarios ofertados.
+    public record FilaOcupacion(
+            String nombre,
+            String detalle,
+            long ofertados,
+            long ocupados,
+            long disponibles,
+            long cancelados,
+            // % de turnos ofertados que fueron reservados o finalizados.
+            int porcentajeOcupacion) {
+    }
+
+    public record ReporteOcupacionResponse(
+            String desde,
+            String hasta,
+            FilaOcupacion totales,
+            List<FilaOcupacion> porEspecialidad,
+            List<FilaOcupacion> porDoctor) {
+    }
+
     public record ResumenResponse(
             long citasHoy,
             long solicitudesPendientes,

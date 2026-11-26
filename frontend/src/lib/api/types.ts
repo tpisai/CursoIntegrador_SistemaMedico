@@ -121,6 +121,63 @@ export interface ReporteCitas {
   porDoctor: FilaReporte[]
 }
 
+export interface FilaOcupacion {
+  nombre: string
+  detalle: string | null
+  ofertados: number
+  ocupados: number
+  disponibles: number
+  cancelados: number
+  porcentajeOcupacion: number
+}
+
+export interface ReporteOcupacionHorarios {
+  desde: string
+  hasta: string
+  totales: FilaOcupacion
+  porEspecialidad: FilaOcupacion[]
+  porDoctor: FilaOcupacion[]
+}
+
+export interface KpisPrescripcion {
+  totalAtenciones: number
+  totalMedicamentos: number
+  promedioMedicamentosPorReceta: number
+  porcentajeConsultasConReceta: number
+}
+
+export interface MedicamentoFrecuente {
+  nombre: string
+  cantidad: number
+}
+
+export interface DiagnosticoFrecuente {
+  nombre: string
+  atenciones: number
+}
+
+export interface PrescripcionPorMedico {
+  idDoctor: number
+  doctor: string
+  especialidad: string
+  recetas: number
+}
+
+export interface TendenciaSemanal {
+  semana: string
+  recetas: number
+}
+
+export interface ReportePrescripcion {
+  desde: string
+  hasta: string
+  kpis: KpisPrescripcion
+  topMedicamentos: MedicamentoFrecuente[]
+  topDiagnosticos: DiagnosticoFrecuente[]
+  porMedico: PrescripcionPorMedico[]
+  tendenciaSemanal: TendenciaSemanal[]
+}
+
 export interface ReservarCitaRequest {
   idHorario: number
   motivo?: string
@@ -347,7 +404,7 @@ export interface TicketRecepcion {
   validadoEn: string | null
 }
 
-export type EstadoCampania ="PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
+export type EstadoCampania = "PLANIFICADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA"
 
 export interface CrearCampaniaRequest {
   titulo: string
@@ -502,4 +559,41 @@ export interface AntecedentesRequest {
   alergias: string
   antecedentes: string
   medicacionHabitual: string
+}
+// --- Carrusel de eventos (anuncios) ---
+
+export type EstadoAnuncio = "VIGENTE" | "PROGRAMADO" | "VENCIDO" | "OCULTO"
+
+export interface Anuncio {
+  idAnuncio: number
+  titulo: string
+  descripcion: string | null
+  // Texto corto sobre el banner, p. ej. "Nueva especialidad".
+  etiqueta: string | null
+  // Ruta del portal ("/paciente/agendar") o URL https; null si no lleva botón.
+  enlace: string | null
+  textoBoton: string | null
+  // Ruta bajo /api, p. ej. "/anuncios/4/imagen?v=1732540800".
+  imagenUrl: string
+}
+
+export interface AnuncioAdmin extends Anuncio {
+  fechaInicio: string
+  fechaFin: string
+  activo: boolean
+  estado: EstadoAnuncio
+  anchoImagen: number
+  altoImagen: number
+  fechaCreacion: string | null
+}
+
+export interface CrearAnuncioDatos {
+  titulo: string
+  descripcion?: string
+  etiqueta?: string
+  enlace?: string
+  textoBoton?: string
+  fechaInicio: string
+  fechaFin: string
+  imagen: File
 }

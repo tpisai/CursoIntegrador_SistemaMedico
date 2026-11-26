@@ -94,7 +94,7 @@ consultorio, así que no aparece en la reserva en línea.
 | `/doctor/solicitudes`    | Pedir cambio de fecha o derivación y seguir la respuesta | RF-15, RF-16     |
 | `/admin`                 | 04 · Panel de Administración: indicadores, validación de tickets, solicitudes, horarios | RF-12, RF-13, RF-17, RF-18 |
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
-| `/admin/reportes`        | Reportes de control de citas y reporte integral descargable en PDF | EDT 4.8              |
+| `/admin/reportes`        | Control de citas, ocupación de horarios, reportes integrales de citas y de morbilidad/prescripción | EDT 4.8 |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
 
 Al registrar una atención, el doctor puede solicitar exámenes de forma opcional: escribe un examen
@@ -293,7 +293,11 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
+| `GET`   | `/admin/reportes/horarios?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`        | Capacidad y ocupación de horarios por especialidad y doctor |
 | `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&secciones=...` | PDF administrativo con gráficos y hasta cinco consultas; las secciones se filtran con `RESUMEN`, `ESPECIALIDAD`, `DOCTORES`, `CAMBIOS`, `DERIVACIONES` |
+| `GET`   | `/admin/reportes/prescripcion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...` | JSON de indicadores, medicamentos, diagnósticos, recetas por médico y tendencia semanal; especialidad y médico son opcionales |
+| `GET`   | `/admin/reportes/prescripcion/pdf?...`                              | PDF JasperReports con indicadores, gráficos y resumen por médico |
+| `GET`   | `/admin/reportes/prescripcion/csv?...`                              | CSV compatible con Excel con todas las secciones del reporte |
 | `GET`   | `/admin/solicitudes`                                                | Todas las solicitudes con su estado e `idAtencion` cuando ya existe atención |
 | `GET`   | `/admin/solicitudes/{id}/referencia`                                | PDF de la derivación vinculada; solo administración activa |
 | `PATCH` | `/admin/solicitudes/{id}`                                           | `{ decision: APROBAR\|RECHAZAR, respuesta? }` (el motivo es obligatorio al rechazar). 409 si ya se respondió |

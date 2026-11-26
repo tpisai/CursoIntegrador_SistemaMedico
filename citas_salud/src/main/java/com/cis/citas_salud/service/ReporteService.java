@@ -1,11 +1,15 @@
 package com.cis.citas_salud.service;
 
 import com.cis.citas_salud.api.ApiException;
+import com.cis.citas_salud.api.dto.AdminDto.FilaOcupacion;
 import com.cis.citas_salud.api.dto.AdminDto.FilaReporte;
+import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.entity.Cita;
+import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.repository.CitaRepository;
+import com.cis.citas_salud.repository.HorarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Reporte de control de administración (EDT 4.8): citas y ausentismo por especialidad y por doctor. */
+/** Reportes de control de administración: citas/ausentismo y ocupación de capacidad horaria. */
 @Service
 @Transactional(readOnly = true)
 public class ReporteService {
@@ -25,10 +29,12 @@ public class ReporteService {
 
     private final AdminService adminService;
     private final CitaRepository citaRepository;
+    private final HorarioRepository horarioRepository;
 
-    public ReporteService(AdminService adminService, CitaRepository citaRepository) {
+    public ReporteService(AdminService adminService, CitaRepository citaRepository, HorarioRepository horarioRepository) {
         this.adminService = adminService;
         this.citaRepository = citaRepository;
+        this.horarioRepository = horarioRepository;
     }
 
     /** Sin fechas, muestra el mes en curso hasta hoy. */
@@ -36,12 +42,7 @@ public class ReporteService {
         adminService.personal(sesion);
         LocalDate fin = hasta != null ? hasta : LocalDate.now();
         LocalDate inicio = desde != null ? desde : fin.withDayOfMonth(1);
-        if (fin.isBefore(inicio)) {
-            throw ApiException.datosInvalidos("La fecha final debe ser igual o posterior a la inicial.");
-        }
-        if (ChronoUnit.DAYS.between(inicio, fin) > MAX_DIAS) {
-            throw ApiException.datosInvalidos("El reporte abarca como máximo un año.");
-        }
+        validarRango(inicio, fin);
 
         Conteo totales = new Conteo("Total", null);
         Map<String, Conteo> especialidades = new LinkedHashMap<>();
@@ -59,6 +60,45 @@ public class ReporteService {
                 ordenadas(especialidades), ordenadas(doctores));
     }
 
+    /** Consulta administrativa: aprovechamiento y ocupación de turnos ofertados en agenda. */
+    public ReporteOcupacionResponse ocupacionHorarios(UsuarioSesion sesion, LocalDate desde, LocalDate hasta) {
+        adminService.personal(sesion);
+        LocalDate fin = hasta != null ? hasta : LocalDate.now().plusDays(15);
+        LocalDate inicio = desde != null ? desde : LocalDate.now().withDayOfMonth(1);
+        validarRango(inicio, fin);
+
+        ConteoOcupacion totales = new ConteoOcupacion("Total", null);
+        Map<String, ConteoOcupacion> especialidades = new LinkedHashMap<>();
+        Map<String, ConteoOcupacion> doctores = new LinkedHashMap<>();
+
+        for (Object[] fila : horarioRepository.conteoOcupacion(inicio, fin)) {
+            String especialidad = (String) fila[0];
+            String doctor = fila[1] + " " + fila[2];
+            String estado = (String) fila[3];
+            long cantidad = (Long) fila[4];
+
+            totales.sumar(estado, cantidad);
+            especialidades.computeIfAbsent(especialidad, e -> new ConteoOcupacion(e, null)).sumar(estado, cantidad);
+            doctores.computeIfAbsent(doctor, d -> new ConteoOcupacion(d, especialidad)).sumar(estado, cantidad);
+        }
+
+        return new ReporteOcupacionResponse(
+                Formato.fecha(inicio),
+                Formato.fecha(fin),
+                totales.fila(),
+                ordenadasOcupacion(especialidades),
+                ordenadasOcupacion(doctores));
+    }
+
+    private static void validarRango(LocalDate inicio, LocalDate fin) {
+        if (fin.isBefore(inicio)) {
+            throw ApiException.datosInvalidos("La fecha final debe ser igual o posterior a la inicial.");
+        }
+        if (ChronoUnit.DAYS.between(inicio, fin) > MAX_DIAS) {
+            throw ApiException.datosInvalidos("El reporte abarca como máximo un año.");
+        }
+    }
+
     private static List<FilaReporte> ordenadas(Map<String, Conteo> conteos) {
         return conteos.values().stream()
                 .map(Conteo::fila)
@@ -66,8 +106,14 @@ public class ReporteService {
                 .toList();
     }
 
-    private static final class Conteo {
+    private static List<FilaOcupacion> ordenadasOcupacion(Map<String, ConteoOcupacion> conteos) {
+        return conteos.values().stream()
+                .map(ConteoOcupacion::fila)
+                .sorted(Comparator.comparingLong(FilaOcupacion::ofertados).reversed().thenComparing(FilaOcupacion::nombre))
+                .toList();
+    }
 
+    private static final class Conteo {
         private final String nombre;
         private final String detalle;
         private long total;
@@ -95,6 +141,36 @@ public class ReporteService {
             long cerradas = atendidas + noAsistio;
             int ausentismo = cerradas == 0 ? 0 : (int) Math.round(100.0 * noAsistio / cerradas);
             return new FilaReporte(nombre, detalle, total, atendidas, noAsistio, canceladas, pendientes, ausentismo);
+        }
+    }
+
+    private static final class ConteoOcupacion {
+        private final String nombre;
+        private final String detalle;
+        private long ofertados;
+        private long ocupados;
+        private long disponibles;
+        private long cancelados;
+
+        private ConteoOcupacion(String nombre, String detalle) {
+            this.nombre = nombre;
+            this.detalle = detalle;
+        }
+
+        private void sumar(String estado, long cantidad) {
+            ofertados += cantidad;
+            switch (estado) {
+                case Horario.RESERVADO, Horario.FINALIZADO -> ocupados += cantidad;
+                case Horario.DISPONIBLE -> disponibles += cantidad;
+                case Horario.CANCELADO -> cancelados += cantidad;
+                default -> disponibles += cantidad;
+            }
+        }
+
+        private FilaOcupacion fila() {
+            long activos = ofertados - cancelados;
+            int porcentaje = activos <= 0 ? 0 : (int) Math.round(100.0 * ocupados / activos);
+            return new FilaOcupacion(nombre, detalle, ofertados, ocupados, disponibles, cancelados, porcentaje);
         }
     }
 }

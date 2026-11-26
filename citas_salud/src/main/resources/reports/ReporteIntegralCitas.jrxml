@@ -1,0 +1,52 @@
+<!-- Plantilla JasperReports 7 para el reporte integral administrativo de citas. -->
+<jasperReport name="ReporteIntegralCitas" language="java" columnCount="1" pageWidth="842" pageHeight="595" columnWidth="782" leftMargin="30" rightMargin="30" topMargin="24" bottomMargin="24" whenNoDataType="AllSectionsNoDetail" uuid="ecdc299c-8c6a-4c33-88d9-8aa866881727">
+	<parameter name="P_DESDE" class="java.lang.String"/>
+	<parameter name="P_HASTA" class="java.lang.String"/>
+	<parameter name="P_TOTAL" class="java.lang.Long"/>
+	<parameter name="P_ACTIVAS" class="java.lang.Long"/>
+	<parameter name="P_ATENDIDAS" class="java.lang.Long"/>
+	<parameter name="P_NO_ASISTIO" class="java.lang.Long"/>
+	<parameter name="P_CANCELADAS" class="java.lang.Long"/>
+	<parameter name="P_TASA_ASISTENCIA" class="java.lang.Integer"/>
+	<parameter name="P_GRANULARIDAD" class="java.lang.String"/>
+	<parameter name="P_GRAFICO_EVOLUCION" class="java.awt.Image"/>
+	<parameter name="P_GRAFICO_ESTADOS" class="java.awt.Image"/>
+	<field name="fecha" class="java.lang.String"/>
+	<field name="hora" class="java.lang.String"/>
+	<field name="especialidad" class="java.lang.String"/>
+	<field name="doctor" class="java.lang.String"/>
+	<field name="estado" class="java.lang.String"/>
+	<query language="sql"><![CDATA[]]></query>
+	<title height="500" splitType="Stretch">
+		<element kind="staticText" x="0" y="0" width="782" height="26" fontName="SansSerif" fontSize="17.0" bold="true" forecolor="#1F3746"><text><![CDATA[REPORTE INTEGRAL DE CITAS]]></text></element>
+		<element kind="textField" x="0" y="29" width="782" height="18" fontName="SansSerif" fontSize="10.0" forecolor="#64748B"><expression><![CDATA["Periodo: " + $P{P_DESDE} + " al " + $P{P_HASTA} + " · Evolución " + $P{P_GRANULARIDAD}.toLowerCase()]]></expression></element>
+		<element kind="rectangle" x="0" y="55" width="250" height="48" radius="6" backcolor="#F1F5F9" mode="Opaque"/>
+		<element kind="staticText" x="10" y="61" width="220" height="12" fontName="SansSerif" fontSize="8.0" forecolor="#64748B"><text><![CDATA[TOTAL DE CITAS]]></text></element>
+		<element kind="textField" x="10" y="76" width="220" height="20" fontName="SansSerif" fontSize="15.0" bold="true" forecolor="#1F3746"><expression><![CDATA[$P{P_TOTAL}]]></expression></element>
+		<element kind="rectangle" x="266" y="55" width="250" height="48" radius="6" backcolor="#F1F5F9" mode="Opaque"/>
+		<element kind="staticText" x="276" y="61" width="220" height="12" fontName="SansSerif" fontSize="8.0" forecolor="#64748B"><text><![CDATA[CITAS ACTIVAS]]></text></element>
+		<element kind="textField" x="276" y="76" width="220" height="20" fontName="SansSerif" fontSize="15.0" bold="true" forecolor="#1F3746"><expression><![CDATA[$P{P_ACTIVAS}]]></expression></element>
+		<element kind="rectangle" x="532" y="55" width="250" height="48" radius="6" backcolor="#F1F5F9" mode="Opaque"/>
+		<element kind="staticText" x="542" y="61" width="220" height="12" fontName="SansSerif" fontSize="8.0" forecolor="#64748B"><text><![CDATA[TASA DE ASISTENCIA]]></text></element>
+		<element kind="textField" x="542" y="76" width="220" height="20" fontName="SansSerif" fontSize="15.0" bold="true" forecolor="#1F3746"><expression><![CDATA[$P{P_TASA_ASISTENCIA} + "% · Atendidas: " + $P{P_ATENDIDAS}]]></expression></element>
+		<element kind="image" x="0" y="112" width="782" height="190" scaleImage="FillFrame"><expression><![CDATA[$P{P_GRAFICO_EVOLUCION}]]></expression></element>
+		<element kind="image" x="0" y="300" width="782" height="190" scaleImage="FillFrame"><expression><![CDATA[$P{P_GRAFICO_ESTADOS}]]></expression></element>
+	</title>
+	<columnHeader height="22">
+		<element kind="rectangle" x="0" y="0" width="782" height="22" backcolor="#1F3746" mode="Opaque"/>
+		<element kind="staticText" x="6" y="3" width="110" height="16" fontName="SansSerif" fontSize="8.0" bold="true" forecolor="#FFFFFF"><text><![CDATA[FECHA]]></text></element>
+		<element kind="staticText" x="118" y="3" width="55" height="16" fontName="SansSerif" fontSize="8.0" bold="true" forecolor="#FFFFFF"><text><![CDATA[HORA]]></text></element>
+		<element kind="staticText" x="177" y="3" width="190" height="16" fontName="SansSerif" fontSize="8.0" bold="true" forecolor="#FFFFFF"><text><![CDATA[ESPECIALIDAD]]></text></element>
+		<element kind="staticText" x="371" y="3" width="250" height="16" fontName="SansSerif" fontSize="8.0" bold="true" forecolor="#FFFFFF"><text><![CDATA[DOCTOR]]></text></element>
+		<element kind="staticText" x="625" y="3" width="150" height="16" fontName="SansSerif" fontSize="8.0" bold="true" forecolor="#FFFFFF"><text><![CDATA[ESTADO]]></text></element>
+	</columnHeader>
+	<detail><band height="20" splitType="Stretch">
+		<element kind="textField" x="6" y="2" width="110" height="16" fontName="SansSerif" fontSize="8.0"><expression><![CDATA[$F{fecha}]]></expression></element>
+		<element kind="textField" x="118" y="2" width="55" height="16" fontName="SansSerif" fontSize="8.0"><expression><![CDATA[$F{hora}]]></expression></element>
+		<element kind="textField" x="177" y="2" width="190" height="16" fontName="SansSerif" fontSize="8.0" blankWhenNull="true"><expression><![CDATA[$F{especialidad}]]></expression></element>
+		<element kind="textField" x="371" y="2" width="250" height="16" fontName="SansSerif" fontSize="8.0" blankWhenNull="true"><expression><![CDATA[$F{doctor}]]></expression></element>
+		<element kind="textField" x="625" y="2" width="150" height="16" fontName="SansSerif" fontSize="8.0"><expression><![CDATA[$F{estado}]]></expression></element>
+		<element kind="line" x="0" y="19" width="782" height="1" forecolor="#E2E8F0"/>
+	</band></detail>
+	<pageFooter height="16"><element kind="textField" x="680" y="0" width="102" height="14" fontName="SansSerif" fontSize="8.0" forecolor="#64748B" hTextAlign="Right"><expression><![CDATA["Página " + $V{PAGE_NUMBER}]]></expression></element></pageFooter>
+</jasperReport>

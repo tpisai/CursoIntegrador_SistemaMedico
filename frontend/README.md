@@ -96,7 +96,7 @@ consultorio, así que no aparece en la reserva en línea.
 | `/admin/comunicacion`    | 05 · Comunicación y Campañas (lado administración)   | RF-19, RF-20         |
 | `/admin/reportes`        | Reportes de control con menú lateral; abre el primero (`/admin/reportes/citas`) | EDT 4.8 |
 | `/admin/reportes/citas`  | Citas y ausentismo, con filtros por especialidad, doctor y estado | EDT 4.8 |
-| `/admin/reportes/integral` | Reporte integral de citas en PDF                   | EDT 4.8              |
+| `/admin/reportes/integral` | Reporte integral filtrable con indicadores, histograma, tablas y PDF con vista previa | EDT 4.8 |
 | `/admin/reportes/horarios` | Capacidad y ocupación de horarios ofertados        | EDT 4.8              |
 | `/admin/reportes/prescripcion` | Morbilidad y prescripción médica               | EDT 4.8              |
 | Campana (barra superior) | Notificaciones del usuario                           | RF-17, RF-22         |
@@ -310,7 +310,8 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...&estado=...` | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso. Los tres filtros son opcionales; `estado` es un estado de cita (400 si no existe) |
 | `GET`   | `/admin/reportes/filtros`                                           | Opciones de los filtros: especialidades y doctores activos (`detalle` del doctor = su especialidad) |
 | `GET`   | `/admin/reportes/horarios?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`        | Capacidad y ocupación de horarios por especialidad y doctor |
-| `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&secciones=...` | PDF administrativo con gráficos y hasta cinco consultas; las secciones se filtran con `RESUMEN`, `ESPECIALIDAD`, `DOCTORES`, `CAMBIOS`, `DERIVACIONES` |
+| `GET`   | `/admin/reportes/citas-integral?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...&estado=...` | Indicadores, evolución semanal o mensual, distribución por estado y especialidad, y detalle administrativo (máximo 1.000 filas); filtros adicionales opcionales |
+| `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...&estado=...` | PDF Jasper con indicadores, gráficas de ancho completo y tabla de citas; acepta los mismos filtros y tiene vista previa/descarga en la pantalla integral |
 | `GET`   | `/admin/reportes/prescripcion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...` | JSON de indicadores, medicamentos, diagnósticos, recetas por médico y tendencia semanal; especialidad y médico son opcionales |
 | `GET`   | `/admin/reportes/prescripcion/pdf?...`                              | PDF JasperReports con indicadores, gráficos y resumen por médico |
 | `GET`   | `/admin/reportes/prescripcion/csv?...`                              | CSV compatible con Excel con todas las secciones del reporte |

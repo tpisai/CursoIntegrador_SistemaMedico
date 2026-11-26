@@ -48,6 +48,19 @@ public final class AdminDto {
             List<OpcionReporte> doctores) {
     }
 
+    public record PuntoEvolucionCitas(String periodo, long programadas, long activas, long atendidas, long noAsistio, long canceladas) { }
+
+    public record FilaEstadoCitas(String estado, long cantidad) { }
+
+    public record FilaEspecialidadIntegral(String especialidad, String estado, long cantidad) { }
+
+    public record FilaDetalleCita(Integer idCita, String fecha, String hora, String especialidad, String doctor, String estado) { }
+
+    public record ReporteIntegralCitasResponse(String desde, String hasta, String granularidad,
+            long totalProgramadas, long activas, long atendidas, long noAsistio, long canceladas,
+            int tasaAsistencia, List<PuntoEvolucionCitas> evolucion, List<FilaEstadoCitas> porEstado,
+            List<FilaEspecialidadIntegral> porEspecialidad, List<FilaDetalleCita> detalle) { }
+
     // Consulta administrativa de capacidad y ocupación de horarios ofertados.
     public record FilaOcupacion(
             String nombre,

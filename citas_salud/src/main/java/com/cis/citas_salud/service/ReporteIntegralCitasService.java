@@ -51,28 +51,93 @@ public class ReporteIntegralCitasService {
 
     private final AdminService adminService;
     private final ReporteIntegralCitasRepository repository;
+    private final GeneradorReportesSql generador;
 
-    public ReporteIntegralCitasService(AdminService adminService, ReporteIntegralCitasRepository repository) {
+    public ReporteIntegralCitasService(AdminService adminService, ReporteIntegralCitasRepository repository,
+                                       GeneradorReportesSql generador) {
         this.adminService = adminService;
         this.repository = repository;
+        this.generador = generador;
+    }
+
+    public com.cis.citas_salud.api.dto.AdminDto.ReporteIntegralCitasResponse datos(
+            UsuarioSesion sesion, LocalDate desde, LocalDate hasta, Integer idEspecialidad,
+            Integer idDoctor, String estado) {
+        adminService.personal(sesion);
+        validarPeriodo(desde, hasta);
+        if (idEspecialidad != null && idEspecialidad < 1 || idDoctor != null && idDoctor < 1) {
+            throw ApiException.datosInvalidos("El filtro de especialidad o doctor no es válido.");
+        }
+        Set<String> estadosValidos = Set.of("RESERVADA", "CONFIRMADA", "ATENDIDA", "NO_ASISTIO", "CANCELADA");
+        if (estado != null && !estadosValidos.contains(estado)) {
+            throw ApiException.datosInvalidos("El estado seleccionado no es válido.");
+        }
+        var estados = repository.integralConteoPorEstado(desde, hasta, idEspecialidad, idDoctor, estado);
+        var evolucionDiaria = repository.integralEvolucionDiaria(desde, hasta, idEspecialidad, idDoctor, estado);
+        var especialidades = repository.integralPorEspecialidad(desde, hasta, idEspecialidad, idDoctor, estado);
+        var detalle = repository.integralDetalle(desde, hasta, idEspecialidad, idDoctor, estado);
+        long total = 0, activas = 0, atendidas = 0, noAsistio = 0, canceladas = 0;
+        List<com.cis.citas_salud.api.dto.AdminDto.FilaEstadoCitas> porEstado = new java.util.ArrayList<>();
+        for (Object[] fila : estados) {
+            String clave = String.valueOf(fila[0]); long cantidad = ((Number) fila[1]).longValue();
+            total += cantidad;
+            if (List.of("RESERVADA", "CONFIRMADA").contains(clave)) activas += cantidad;
+            if ("ATENDIDA".equals(clave)) atendidas += cantidad;
+            if ("NO_ASISTIO".equals(clave)) noAsistio += cantidad;
+            if ("CANCELADA".equals(clave)) canceladas += cantidad;
+            porEstado.add(new com.cis.citas_salud.api.dto.AdminDto.FilaEstadoCitas(clave, cantidad));
+        }
+        boolean mensual = ChronoUnit.DAYS.between(desde, hasta) > 92;
+        java.util.Map<String, long[]> grupos = new java.util.TreeMap<>();
+        for (Object[] fila : evolucionDiaria) {
+            LocalDate fecha = (LocalDate) fila[0];
+            LocalDate periodo = mensual ? fecha.withDayOfMonth(1) : fecha.with(java.time.DayOfWeek.MONDAY);
+            String clave = periodo.toString();
+            long[] valores = grupos.computeIfAbsent(clave, k -> new long[5]);
+            String e = String.valueOf(fila[1]); long cantidad = ((Number) fila[2]).longValue();
+            valores[0] += cantidad;
+            if (List.of("RESERVADA", "CONFIRMADA").contains(e)) valores[1] += cantidad;
+            if ("ATENDIDA".equals(e)) valores[2] += cantidad;
+            if ("NO_ASISTIO".equals(e)) valores[3] += cantidad;
+            if ("CANCELADA".equals(e)) valores[4] += cantidad;
+        }
+        List<com.cis.citas_salud.api.dto.AdminDto.PuntoEvolucionCitas> evolucion = grupos.entrySet().stream()
+                .map(e -> new com.cis.citas_salud.api.dto.AdminDto.PuntoEvolucionCitas(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2], e.getValue()[3], e.getValue()[4])).toList();
+        List<com.cis.citas_salud.api.dto.AdminDto.FilaEspecialidadIntegral> porEspecialidad = especialidades.stream()
+                .map(f -> new com.cis.citas_salud.api.dto.AdminDto.FilaEspecialidadIntegral(String.valueOf(f[0]), String.valueOf(f[1]), ((Number) f[2]).longValue())).toList();
+        List<com.cis.citas_salud.api.dto.AdminDto.FilaDetalleCita> filasDetalle = detalle.stream().limit(1000)
+                .map(f -> new com.cis.citas_salud.api.dto.AdminDto.FilaDetalleCita(((Number) f[0]).intValue(), String.valueOf(f[1]), String.valueOf(f[2]), String.valueOf(f[3]), String.valueOf(f[4]) + " " + String.valueOf(f[5]), String.valueOf(f[6]))).toList();
+        int tasa = atendidas + noAsistio == 0 ? 0 : (int) Math.round(100.0 * atendidas / (atendidas + noAsistio));
+        return new com.cis.citas_salud.api.dto.AdminDto.ReporteIntegralCitasResponse(desde.toString(), hasta.toString(), mensual ? "MENSUAL" : "SEMANAL", total, activas, atendidas, noAsistio, canceladas, tasa, evolucion, porEstado, porEspecialidad, filasDetalle);
     }
 
     public Archivo pdf(UsuarioSesion sesion, LocalDate desde, LocalDate hasta, List<String> seleccionadas) {
-        adminService.personal(sesion);
-        validarPeriodo(desde, hasta);
-        Set<String> secciones = validarSecciones(seleccionadas);
-        LocalDateTime inicioEvento = desde.atStartOfDay();
-        LocalDateTime finEvento = hasta.plusDays(1).atStartOfDay();
-        List<Object[]> estados = secciones.contains("RESUMEN") ? repository.conteoPorEstado(desde, hasta) : List.of();
-        List<Object[]> especialidades = secciones.contains("ESPECIALIDAD") ? repository.conteoPorEspecialidadYEstado(desde, hasta) : List.of();
-        List<Object[]> doctores = secciones.contains("DOCTORES")
-                ? repository.doctoresConMasCitas(desde, hasta).stream().limit(5).toList() : List.of();
-        boolean necesitaEventosResumen = secciones.contains("RESUMEN");
-        List<Object[]> cambios = secciones.contains("CAMBIOS") || necesitaEventosResumen
-                ? repository.cambiosDeFecha(inicioEvento, finEvento) : List.of();
-        List<Object[]> derivaciones = secciones.contains("DERIVACIONES") || necesitaEventosResumen
-                ? repository.derivaciones(inicioEvento, finEvento) : List.of();
-        byte[] contenido = renderizar(desde, hasta, estados, especialidades, doctores, cambios, derivaciones, secciones);
+        return pdf(sesion, desde, hasta, seleccionadas, null, null, null);
+    }
+
+    public Archivo pdf(UsuarioSesion sesion, LocalDate desde, LocalDate hasta, List<String> seleccionadas,
+                       Integer idEspecialidad, Integer idDoctor, String estado) {
+        validarSecciones(seleccionadas);
+        var reporte = datos(sesion, desde, hasta, idEspecialidad, idDoctor, estado);
+        java.util.Map<String, Object> parametros = new java.util.HashMap<>();
+        parametros.put("P_DESDE", reporte.desde());
+        parametros.put("P_HASTA", reporte.hasta());
+        parametros.put("P_TOTAL", reporte.totalProgramadas());
+        parametros.put("P_ACTIVAS", reporte.activas());
+        parametros.put("P_ATENDIDAS", reporte.atendidas());
+        parametros.put("P_NO_ASISTIO", reporte.noAsistio());
+        parametros.put("P_CANCELADAS", reporte.canceladas());
+        parametros.put("P_TASA_ASISTENCIA", reporte.tasaAsistencia());
+        parametros.put("P_GRANULARIDAD", reporte.granularidad());
+        parametros.put("P_GRAFICO_EVOLUCION", ReporteIntegralCitasGraficos.evolucion(reporte.evolucion()));
+        parametros.put("P_GRAFICO_ESTADOS", ReporteIntegralCitasGraficos.estados(reporte.porEstado()));
+        List<java.util.Map<String, ?>> filas = reporte.detalle().stream().<java.util.Map<String, ?>>map(f -> {
+            java.util.Map<String, Object> fila = new java.util.HashMap<>();
+            fila.put("fecha", f.fecha()); fila.put("hora", f.hora()); fila.put("especialidad", f.especialidad());
+            fila.put("doctor", f.doctor()); fila.put("estado", f.estado()); return fila;
+        }).toList();
+        byte[] contenido = generador.pdf("ReporteIntegralCitas", parametros,
+                new net.sf.jasperreports.engine.data.JRMapCollectionDataSource(filas));
         return new Archivo("reporte-integral-citas-" + desde + "-a-" + hasta + ".pdf", "application/pdf", contenido);
     }
 

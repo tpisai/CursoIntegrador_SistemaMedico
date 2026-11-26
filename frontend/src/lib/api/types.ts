@@ -124,6 +124,22 @@ export interface ReporteCitas {
   porDoctor: FilaReporte[]
 }
 
+export interface ReporteIntegralCitas {
+  desde: string
+  hasta: string
+  granularidad: "SEMANAL" | "MENSUAL"
+  totalProgramadas: number
+  activas: number
+  atendidas: number
+  noAsistio: number
+  canceladas: number
+  tasaAsistencia: number
+  evolucion: { periodo: string; programadas: number; activas: number; atendidas: number; noAsistio: number; canceladas: number }[]
+  porEstado: { estado: EstadoCita; cantidad: number }[]
+  porEspecialidad: { especialidad: string; estado: EstadoCita; cantidad: number }[]
+  detalle: { idCita: number; fecha: string; hora: string; especialidad: string; doctor: string; estado: EstadoCita }[]
+}
+
 /** Opción de un filtro del reporte de citas. En los doctores, `detalle` es su especialidad. */
 export interface OpcionReporte {
   id: number

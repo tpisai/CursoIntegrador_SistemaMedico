@@ -3,15 +3,19 @@ package com.cis.citas_salud.service;
 import com.cis.citas_salud.api.ApiException;
 import com.cis.citas_salud.api.dto.AdminDto.FilaOcupacion;
 import com.cis.citas_salud.api.dto.AdminDto.FilaReporte;
+import com.cis.citas_salud.api.dto.AdminDto.FiltrosReporteResponse;
+import com.cis.citas_salud.api.dto.AdminDto.OpcionReporte;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.entity.Cita;
+import com.cis.citas_salud.entity.Doctor;
+import com.cis.citas_salud.entity.Especialidad;
 import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.repository.CitaRepository;
-import com.cis.citas_salud.repository.HorarioRepository;
 import com.cis.citas_salud.repository.DoctorRepository;
 import com.cis.citas_salud.repository.EspecialidadRepository;
+import com.cis.citas_salud.repository.HorarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +64,11 @@ class ReporteServiceTest {
         int idEspecialidad = "Pediatría".equals(especialidad) ? 1 : 2;
         int idDoctor = "Patricia".equals(nombres) ? 10 : "Jorge".equals(nombres) ? 11 : 12;
         return new Object[] {idEspecialidad, especialidad, idDoctor, nombres, apellidos, estado, citas};
+    }
+
+    /** Fila de HorarioRepository.conteoOcupacion: [especialidad, nombres, apellidos, estado, turnos]. */
+    private static Object[] filaOcupacion(String especialidad, String nombres, String apellidos, String estado, long turnos) {
+        return new Object[] {especialidad, nombres, apellidos, estado, turnos};
     }
 
     private void hayCitas(Object[]... filas) {
@@ -113,13 +122,53 @@ class ReporteServiceTest {
     void aplicaLosFiltrosDeEspecialidadDoctorYEstadoEnElRepositorio() {
         Object[] resultado = fila("Nutrición", "Josué", "Cóndor Quispe", Cita.ATENDIDA, 2);
         when(citaRepository.conteoParaReporte(DESDE, HASTA, 2, 12, Cita.ATENDIDA))
-                .thenReturn(List.of(resultado));
+                .thenReturn(List.<Object[]>of(resultado));
 
         ReporteResponse reporte = servicio.citas(sesion, DESDE, HASTA, 2, 12, Cita.ATENDIDA);
 
         assertEquals(2, reporte.totales().total());
         assertEquals("Josué Cóndor Quispe", reporte.porDoctor().get(0).nombre());
         verify(citaRepository).conteoParaReporte(DESDE, HASTA, 2, 12, Cita.ATENDIDA);
+    }
+
+    @Test
+    void cadaFilaLlevaLosIdsParaFiltrarPorElla() {
+        hayCitas(fila("Pediatría", "Patricia", "Quiroz Soto", Cita.ATENDIDA, 3));
+
+        ReporteResponse reporte = servicio.citas(sesion, DESDE, HASTA);
+
+        FilaReporte especialidad = reporte.porEspecialidad().get(0);
+        assertEquals(1, especialidad.idEspecialidad());
+        assertNull(especialidad.idDoctor());
+        FilaReporte doctor = reporte.porDoctor().get(0);
+        assertEquals(1, doctor.idEspecialidad());
+        assertEquals(10, doctor.idDoctor());
+        assertNull(reporte.totales().idEspecialidad());
+        assertNull(reporte.totales().idDoctor());
+    }
+
+    @Test
+    void dosDoctoresConElMismoNombreNoSeMezclan() {
+        hayCitas(new Object[] {1, "Pediatría", 10, "Ana", "Ríos Paz", Cita.ATENDIDA, 2L},
+                new Object[] {2, "Nutrición", 20, "Ana", "Ríos Paz", Cita.ATENDIDA, 5L});
+
+        List<FilaReporte> doctores = servicio.citas(sesion, DESDE, HASTA).porDoctor();
+
+        assertEquals(2, doctores.size());
+        assertEquals(20, doctores.get(0).idDoctor());
+        assertEquals(5, doctores.get(0).total());
+        assertEquals("Pediatría", doctores.get(1).detalle());
+    }
+
+    @Test
+    void elEstadoSeAceptaEnMinusculasYEnBlancoEsSinFiltro() {
+        when(citaRepository.conteoParaReporte(any(), any(), any(), any(), any())).thenReturn(List.of());
+
+        servicio.citas(sesion, DESDE, HASTA, null, null, " atendida ");
+        servicio.citas(sesion, DESDE, HASTA, null, null, "  ");
+
+        verify(citaRepository).conteoParaReporte(DESDE, HASTA, null, null, Cita.ATENDIDA);
+        verify(citaRepository).conteoParaReporte(DESDE, HASTA, null, null, null);
     }
 
     @Test
@@ -176,12 +225,46 @@ class ReporteServiceTest {
         verifyNoInteractions(citaRepository);
     }
 
+    // ----- Filtros del reporte -----
+
+    @Test
+    void losFiltrosOfrecenEspecialidadesYDoctoresActivosEnOrdenAlfabetico() {
+        Especialidad pediatria = new Especialidad("Pediatría");
+        pediatria.setIdEspecialidad(4);
+        Especialidad nutricion = new Especialidad("Nutrición");
+        nutricion.setIdEspecialidad(3);
+        Doctor salazar = DatosPrueba.doctor(5, DatosPrueba.usuario(25, UsuarioSesion.DOCTOR, "87654325"));
+        salazar.setEspecialidad(pediatria);
+        when(especialidadRepository.findByEstadoOrderByIdEspecialidad("ACTIVO")).thenReturn(List.of(pediatria, nutricion));
+        when(doctorRepository.findByEstadoOrderByIdDoctor("ACTIVO")).thenReturn(List.of(salazar));
+
+        FiltrosReporteResponse filtros = servicio.filtros(sesion);
+
+        assertEquals(List.of("Nutrición", "Pediatría"), filtros.especialidades().stream().map(OpcionReporte::nombre).toList());
+        assertEquals(4, filtros.especialidades().get(1).id());
+        OpcionReporte doctor = filtros.doctores().get(0);
+        assertEquals(5, doctor.id());
+        assertEquals(salazar.getUsuario().getNombres() + " " + salazar.getUsuario().getApellidos(), doctor.nombre());
+        assertEquals("Pediatría", doctor.detalle());
+    }
+
+    @Test
+    void sinPermisoNoSeConsultanLosFiltros() {
+        when(adminService.personal(sesion)).thenThrow(ApiException.prohibido("Sin permiso."));
+
+        exigeError(HttpStatus.FORBIDDEN, () -> servicio.filtros(sesion));
+
+        verifyNoInteractions(especialidadRepository, doctorRepository);
+    }
+
+    // ----- Ocupación de horarios -----
+
     @Test
     void calculaOcupacionDeHorariosPorEspecialidadYDoctor() {
         when(horarioRepository.conteoOcupacion(DESDE, HASTA)).thenReturn(List.of(
-                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.RESERVADO, 3),
-                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.DISPONIBLE, 1),
-                fila("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.CANCELADO, 1)));
+                filaOcupacion("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.RESERVADO, 3),
+                filaOcupacion("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.DISPONIBLE, 1),
+                filaOcupacion("Medicina General", "Rodrigo", "Mendoza Ríos", Horario.CANCELADO, 1)));
 
         ReporteOcupacionResponse reporte = servicio.ocupacionHorarios(sesion, DESDE, HASTA);
         FilaOcupacion totales = reporte.totales();

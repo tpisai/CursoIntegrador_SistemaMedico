@@ -62,16 +62,6 @@ export function descargarReportePrescripcionCsv(
   )
 }
 
-export function descargarReferenciaSolicitud(idSolicitud: number) {
-  return requestArchivo(`/admin/solicitudes/${idSolicitud}/referencia`)
-}
-
-export function descargarReporteIntegralCitas(desde: string, hasta: string, secciones: string[]) {
-  const params = new URLSearchParams({ desde, hasta })
-  secciones.forEach((seccion) => params.append("secciones", seccion))
-  return requestArchivo(`/admin/reportes/citas-integral/pdf?${params.toString()}`)
-}
-
 export function responderSolicitud(idSolicitud: number, datos: ResponderSolicitudRequest) {
   return request<SolicitudAdmin>("PATCH", `/admin/solicitudes/${idSolicitud}`, datos)
 }

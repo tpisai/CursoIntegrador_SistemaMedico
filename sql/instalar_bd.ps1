@@ -94,8 +94,11 @@ foreach ($script in $scripts) {
     Invoke-Psql $BaseDeDatos @("-f", (Join-Path $PSScriptRoot $script))
 }
 
-Write-Host "Listo. Registros en las tablas que llenan los formularios:"
-$tablas = "usuario", "paciente", "doctor", "horario", "cita", "atencion", "documento_medico", "solicitud", "campania", "inscripcion_campania"
+Write-Host "Listo. Registros por tabla:"
+$tablas = "rol", "permiso", "cargo", "cargo_permiso", "usuario", "personal_administrativo", "especialidad", "doctor",
+    "paciente", "historia_clinica", "consultorio", "doctor_consultorio", "horario", "cita", "triaje", "atencion",
+    "orden_examen", "documento_medico", "detalle_medicamento", "resultado_examen", "campania", "inscripcion_campania",
+    "solicitud", "auditoria", "notificacion", "recuperacion_pin", "anuncio"
 $conteo = ($tablas | ForEach-Object { "('$_', (SELECT count(*) FROM $_))" }) -join ", "
 & $Psql -h $Servidor -U $Usuario -d $BaseDeDatos -q -P footer=off -c "SELECT tabla, registros FROM (VALUES $conteo) AS t(tabla, registros)"
 Write-Host "Los horarios de los próximos 60 días los genera el backend al arrancar."

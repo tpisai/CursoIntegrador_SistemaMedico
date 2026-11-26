@@ -5,6 +5,8 @@ import { ReporteCitas } from "@/components/admin/reporte-citas"
 import { ReporteCitasIntegral } from "@/components/admin/reporte-citas-integral"
 import { ReporteOcupacionHorarios } from "@/components/admin/reporte-ocupacion-horarios"
 import { HeroSeccion } from "@/components/portal/hero-seccion"
+import { ReportePrescripcionClinica } from "@/components/admin/reporte-prescripcion-clinica"
+import { Encabezado } from "@/components/portal/encabezado"
 
 export const metadata: Metadata = {
   title: "Reportes",
@@ -22,6 +24,7 @@ export default function ReportesPage() {
       <ReporteCitas />
       <ReporteCitasIntegral />
       <ReporteOcupacionHorarios />
+      <ReportePrescripcionClinica />
     </>
   )
 }

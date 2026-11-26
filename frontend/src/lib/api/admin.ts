@@ -19,6 +19,15 @@ export const rutasAdmin = {
   anuncios: "/admin/anuncios",
   reporteCitas: (desde: string, hasta: string) => `/admin/reportes/citas?desde=${desde}&hasta=${hasta}`,
   reporteHorarios: (desde: string, hasta: string) => `/admin/reportes/horarios?desde=${desde}&hasta=${hasta}`,
+  reportePrescripcion: (desde: string, hasta: string, idEspecialidad?: number, idDoctor?: number) =>
+    `/admin/reportes/prescripcion?${parametrosPrescripcion(desde, hasta, idEspecialidad, idDoctor)}`,
+}
+
+function parametrosPrescripcion(desde: string, hasta: string, idEspecialidad?: number, idDoctor?: number) {
+  const params = new URLSearchParams({ desde, hasta })
+  if (idEspecialidad !== undefined) params.set("idEspecialidad", String(idEspecialidad))
+  if (idDoctor !== undefined) params.set("idDoctor", String(idDoctor))
+  return params.toString()
 }
 
 export function descargarReferenciaSolicitud(idSolicitud: number) {
@@ -29,6 +38,28 @@ export function descargarReporteIntegralCitas(desde: string, hasta: string, secc
   const params = new URLSearchParams({ desde, hasta })
   secciones.forEach((seccion) => params.append("secciones", seccion))
   return requestArchivo(`/admin/reportes/citas-integral/pdf?${params.toString()}`)
+}
+
+export function descargarReportePrescripcionPdf(
+  desde: string,
+  hasta: string,
+  idEspecialidad?: number,
+  idDoctor?: number
+) {
+  return requestArchivo(
+    `/admin/reportes/prescripcion/pdf?${parametrosPrescripcion(desde, hasta, idEspecialidad, idDoctor)}`
+  )
+}
+
+export function descargarReportePrescripcionCsv(
+  desde: string,
+  hasta: string,
+  idEspecialidad?: number,
+  idDoctor?: number
+) {
+  return requestArchivo(
+    `/admin/reportes/prescripcion/csv?${parametrosPrescripcion(desde, hasta, idEspecialidad, idDoctor)}`
+  )
 }
 
 export function responderSolicitud(idSolicitud: number, datos: ResponderSolicitudRequest) {

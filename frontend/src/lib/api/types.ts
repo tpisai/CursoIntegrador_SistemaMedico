@@ -139,6 +139,45 @@ export interface ReporteOcupacionHorarios {
   porDoctor: FilaOcupacion[]
 }
 
+export interface KpisPrescripcion {
+  totalAtenciones: number
+  totalMedicamentos: number
+  promedioMedicamentosPorReceta: number
+  porcentajeConsultasConReceta: number
+}
+
+export interface MedicamentoFrecuente {
+  nombre: string
+  cantidad: number
+}
+
+export interface DiagnosticoFrecuente {
+  nombre: string
+  atenciones: number
+}
+
+export interface PrescripcionPorMedico {
+  idDoctor: number
+  doctor: string
+  especialidad: string
+  recetas: number
+}
+
+export interface TendenciaSemanal {
+  semana: string
+  recetas: number
+}
+
+export interface ReportePrescripcion {
+  desde: string
+  hasta: string
+  kpis: KpisPrescripcion
+  topMedicamentos: MedicamentoFrecuente[]
+  topDiagnosticos: DiagnosticoFrecuente[]
+  porMedico: PrescripcionPorMedico[]
+  tendenciaSemanal: TendenciaSemanal[]
+}
+
 export interface ReservarCitaRequest {
   idHorario: number
   motivo?: string

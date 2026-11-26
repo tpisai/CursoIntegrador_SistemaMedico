@@ -5,6 +5,7 @@ import com.cis.citas_salud.api.dto.AdminDto.CrearCampaniaRequest;
 import com.cis.citas_salud.api.dto.AdminDto.CrearHorariosRequest;
 import com.cis.citas_salud.api.dto.AdminDto.CrearHorariosResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteOcupacionResponse;
+import com.cis.citas_salud.api.dto.AdminDto.FiltrosReporteResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ReporteResponse;
 import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.ResumenResponse;
@@ -63,12 +64,20 @@ public class AdminController {
         return adminService.resumen(sesion);
     }
 
+    @GetMapping("/reportes/filtros")
+    public FiltrosReporteResponse filtrosReporte(UsuarioSesion sesion) {
+        return reporteService.filtros(sesion);
+    }
+
     @GetMapping("/reportes/citas")
     public ReporteResponse reporteCitas(
             UsuarioSesion sesion,
             @RequestParam(value = "desde", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam(value = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return reporteService.citas(sesion, desde, hasta);
+            @RequestParam(value = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor,
+            @RequestParam(value = "estado", required = false) String estado) {
+        return reporteService.citas(sesion, desde, hasta, idEspecialidad, idDoctor, estado);
     }
 
     @GetMapping("/reportes/horarios")

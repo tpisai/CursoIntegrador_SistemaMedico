@@ -3,7 +3,7 @@
 import useSWR from "swr"
 
 import { rutasAdmin } from "@/lib/api/admin"
-import type { CampaniaAdmin, ReporteCitas, ReporteOcupacionHorarios, ResumenAdmin, SolicitudAdmin } from "@/lib/api/types"
+import type { AnuncioAdmin, CampaniaAdmin, ReporteCitas, ReporteOcupacionHorarios, ResumenAdmin, SolicitudAdmin } from "@/lib/api/types"
 
 // Las solicitudes de los doctores llegan en cualquier momento.
 const AL_DIA = { refreshInterval: 30_000, revalidateOnFocus: true }
@@ -26,4 +26,8 @@ export function useReporteOcupacionHorarios(desde: string | null, hasta: string 
 
 export function useCampaniasAdmin() {
   return useSWR<CampaniaAdmin[]>(rutasAdmin.campanias)
+}
+
+export function useAnunciosAdmin() {
+  return useSWR<AnuncioAdmin[]>(rutasAdmin.anuncios)
 }

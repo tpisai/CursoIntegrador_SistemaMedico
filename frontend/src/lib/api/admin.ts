@@ -1,6 +1,8 @@
 import { request, requestArchivo } from "./http"
 import type {
+  AnuncioAdmin,
   CampaniaAdmin,
+  CrearAnuncioDatos,
   CrearCampaniaRequest,
   CrearHorariosRequest,
   CrearHorariosResponse,
@@ -14,6 +16,7 @@ export const rutasAdmin = {
   resumen: "/admin/resumen",
   solicitudes: "/admin/solicitudes",
   campanias: "/admin/campanias",
+  anuncios: "/admin/anuncios",
   reporteCitas: (desde: string, hasta: string) => `/admin/reportes/citas?desde=${desde}&hasta=${hasta}`,
   reporteHorarios: (desde: string, hasta: string) => `/admin/reportes/horarios?desde=${desde}&hasta=${hasta}`,
 }
@@ -46,4 +49,22 @@ export function validarTicket(numeroTicket: string) {
 
 export function crearCampania(datos: CrearCampaniaRequest) {
   return request<CampaniaAdmin>("POST", "/admin/campanias", datos)
+}
+
+/** Multipart: los datos como campos y el banner en "imagen". */
+export function crearAnuncio({ imagen, ...datos }: CrearAnuncioDatos) {
+  const formulario = new FormData()
+  for (const [campo, valor] of Object.entries(datos)) {
+    if (valor) formulario.append(campo, valor)
+  }
+  formulario.append("imagen", imagen)
+  return request<AnuncioAdmin>("POST", "/admin/anuncios", formulario)
+}
+
+export function cambiarVisibilidadAnuncio(idAnuncio: number, activo: boolean) {
+  return request<AnuncioAdmin>("PATCH", `/admin/anuncios/${idAnuncio}?activo=${activo}`)
+}
+
+export function eliminarAnuncio(idAnuncio: number) {
+  return request<void>("DELETE", `/admin/anuncios/${idAnuncio}`)
 }

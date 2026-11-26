@@ -173,3 +173,14 @@
     @apply font-sans;
   }
 }
+
+/* Carrusel de eventos: la barra del punto activo se llena y, al terminar, pasa a la siguiente
+ * diapositiva (onAnimationEnd). Pausarla con animation-play-state detiene también el avance. */
+@keyframes progreso-carrusel {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

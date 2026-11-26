@@ -521,3 +521,40 @@ export interface AntecedentesRequest {
   antecedentes: string
   medicacionHabitual: string
 }
+// --- Carrusel de eventos (anuncios) ---
+
+export type EstadoAnuncio = "VIGENTE" | "PROGRAMADO" | "VENCIDO" | "OCULTO"
+
+export interface Anuncio {
+  idAnuncio: number
+  titulo: string
+  descripcion: string | null
+  // Texto corto sobre el banner, p. ej. "Nueva especialidad".
+  etiqueta: string | null
+  // Ruta del portal ("/paciente/agendar") o URL https; null si no lleva botón.
+  enlace: string | null
+  textoBoton: string | null
+  // Ruta bajo /api, p. ej. "/anuncios/4/imagen?v=1732540800".
+  imagenUrl: string
+}
+
+export interface AnuncioAdmin extends Anuncio {
+  fechaInicio: string
+  fechaFin: string
+  activo: boolean
+  estado: EstadoAnuncio
+  anchoImagen: number
+  altoImagen: number
+  fechaCreacion: string | null
+}
+
+export interface CrearAnuncioDatos {
+  titulo: string
+  descripcion?: string
+  etiqueta?: string
+  enlace?: string
+  textoBoton?: string
+  fechaInicio: string
+  fechaFin: string
+  imagen: File
+}

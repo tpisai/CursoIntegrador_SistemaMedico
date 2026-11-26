@@ -1,155 +1,79 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { DownloadIcon, EyeIcon, FileTextIcon } from "lucide-react"
-
+import { useState } from "react"
+import { DownloadIcon, EyeIcon } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { descargarReporteIntegralCitas } from "@/lib/api/admin"
-import { mensajeDeError } from "@/lib/api/http"
+import { consultarReporteIntegralCitas, descargarReporteIntegralCitas } from "@/lib/api/admin"
 import { guardarArchivo } from "@/lib/descargar"
+import { mensajeDeError } from "@/lib/api/http"
+import type { ReporteIntegralCitas } from "@/lib/api/types"
 import { toFechaISO } from "@/lib/format"
+import { useFiltrosReporte } from "@/hooks/use-admin"
 
-const SECCIONES = [
-  { id: "RESUMEN", texto: "Resultados y eventos" },
-  { id: "ESPECIALIDAD", texto: "Citas por especialidad" },
-  { id: "DOCTORES", texto: "Doctores con más citas" },
-  { id: "CAMBIOS", texto: "Cambios de fecha" },
-  { id: "DERIVACIONES", texto: "Derivaciones hospitalarias" },
-] as const
-
-function diferenciaDias(desde: string, hasta: string) {
-  const inicio = new Date(`${desde}T00:00:00`)
-  const fin = new Date(`${hasta}T00:00:00`)
-  return Math.round((fin.getTime() - inicio.getTime()) / 86_400_000)
-}
+const ESTADOS = ["", "RESERVADA", "CONFIRMADA", "ATENDIDA", "NO_ASISTIO", "CANCELADA"]
 
 export function ReporteCitasIntegral() {
-  const [desde, setDesde] = useState(() => {
-    const hoy = new Date()
-    return toFechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
-  })
-  const [hasta, setHasta] = useState(() => toFechaISO(new Date()))
-  const [secciones, setSecciones] = useState<string[]>(SECCIONES.map((s) => s.id))
+  const hoy = new Date()
+  const [desde, setDesde] = useState(toFechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1)))
+  const [hasta, setHasta] = useState(toFechaISO(hoy))
+  const [especialidad, setEspecialidad] = useState("")
+  const [doctor, setDoctor] = useState("")
+  const [estado, setEstado] = useState("")
+  const [reporte, setReporte] = useState<ReporteIntegralCitas | null>(null)
+  const { data: filtros, error: errorFiltros } = useFiltrosReporte()
+  const doctores = (filtros?.doctores ?? []).filter(d => !especialidad || d.detalle === filtros?.especialidades.find(e => e.id === Number(especialidad))?.nombre)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null)
-  const dias = desde && hasta ? diferenciaDias(desde, hasta) : -1
-  const fechasValidas = dias >= 0 && dias <= 366
-  const formularioValido = fechasValidas && secciones.length > 0
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfCargando, setPdfCargando] = useState(false)
 
-  useEffect(() => () => {
-    if (vistaPrevia) URL.revokeObjectURL(vistaPrevia)
-  }, [vistaPrevia])
-
-  function invalidarVistaPrevia() {
-    setVistaPrevia(null)
-    setError(null)
-  }
-
-  function cambiarSeccion(id: string, marcada: boolean) {
-    setSecciones((actuales) => marcada ? [...actuales, id] : actuales.filter((actual) => actual !== id))
-    invalidarVistaPrevia()
-  }
-
-  async function generarPdf() {
-    if (!formularioValido) return null
-    setCargando(true)
-    setError(null)
+  async function consultar() {
+    setCargando(true); setError(null)
     try {
-      return await descargarReporteIntegralCitas(desde, hasta, secciones)
-    } catch (e) {
-      setError(mensajeDeError(e))
-      return null
-    } finally {
-      setCargando(false)
-    }
+      setReporte(await consultarReporteIntegralCitas(desde, hasta, especialidad ? Number(especialidad) : undefined, doctor ? Number(doctor) : undefined, estado || undefined))
+    } catch (e) { setError(mensajeDeError(e)) } finally { setCargando(false) }
   }
 
-  async function previsualizar() {
-    const pdf = await generarPdf()
-    if (pdf) setVistaPrevia(URL.createObjectURL(pdf))
+
+  async function generarPdf(previsualizar: boolean) {
+    setPdfCargando(true); setError(null)
+    try {
+      const blob = await descargarReporteIntegralCitas(desde, hasta, [], especialidad ? Number(especialidad) : undefined, doctor ? Number(doctor) : undefined, estado || undefined)
+      if (previsualizar) {
+        if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+        setPdfUrl(URL.createObjectURL(blob))
+      } else guardarArchivo(blob, `reporte-integral-citas-${desde}-a-${hasta}.pdf`)
+    } catch (e) { setError(mensajeDeError(e)) } finally { setPdfCargando(false) }
   }
 
-  async function descargar() {
-    const pdf = await generarPdf()
-    if (pdf) guardarArchivo(pdf, `reporte-integral-citas-${desde}-a-${hasta}.pdf`)
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Reporte integral de citas (PDF)</CardTitle>
-        <CardDescription>
-          Configura el periodo y el contenido. Podés revisar el PDF antes de descargarlo; las métricas de eventos pueden superponerse.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="reporte-integral-desde">Desde</FieldLabel>
-            <Input id="reporte-integral-desde" type="date" value={desde} onChange={(e) => { setDesde(e.target.value); invalidarVistaPrevia() }} />
-          </Field>
-          <Field data-invalid={!fechasValidas}>
-            <FieldLabel htmlFor="reporte-integral-hasta">Hasta</FieldLabel>
-            <Input
-              id="reporte-integral-hasta"
-              type="date"
-              aria-invalid={!fechasValidas}
-              value={hasta}
-              onChange={(e) => { setHasta(e.target.value); invalidarVistaPrevia() }}
-            />
-            {fechasValidas ? null : (
-              <FieldError>{dias < 0 ? "La fecha final debe ser igual o posterior a la inicial." : "El periodo máximo es de un año."}</FieldError>
-            )}
-          </Field>
-        </div>
-
-        <fieldset className="space-y-3 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-medium">Filtrar las consultas incluidas</legend>
-          <p className="text-sm text-muted-foreground">Elegí qué secciones querés incorporar. Dejá todas seleccionadas para el reporte completo.</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {SECCIONES.map((seccion) => (
-              <label key={seccion.id} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={secciones.includes(seccion.id)}
-                  onChange={(e) => cambiarSeccion(seccion.id, e.target.checked)}
-                />
-                {seccion.texto}
-              </label>
-            ))}
-          </div>
-          {secciones.length ? null : <p className="text-sm text-destructive">Seleccioná al menos una consulta.</p>}
-        </fieldset>
-
-        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" className="h-11" disabled={!formularioValido || cargando} onClick={previsualizar}>
-            {cargando ? <FileTextIcon data-icon="inline-start" /> : <EyeIcon data-icon="inline-start" />}
-            {cargando ? "Generando vista previa…" : "Previsualizar PDF"}
-          </Button>
-          <Button className="h-11" disabled={!formularioValido || cargando} onClick={descargar}>
-            <DownloadIcon data-icon="inline-start" />
-            Descargar PDF
-          </Button>
-        </div>
-
-        {vistaPrevia ? (
-          <section aria-label="Vista previa del reporte integral" className="space-y-2">
-            <h3 className="text-sm font-semibold">Vista previa — {desde} al {hasta}</h3>
-            <iframe
-              title="Vista previa del reporte integral de citas"
-              src={vistaPrevia}
-              className="h-[min(75vh,900px)] w-full rounded-lg border bg-background"
-            />
-          </section>
-        ) : null}
-      </CardContent>
-    </Card>
-  )
+  return <div className="space-y-6">
+    <Card><CardHeader><CardTitle>Reporte integral de citas</CardTitle></CardHeader><CardContent className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm">Desde<Input type="date" value={desde} onChange={e => setDesde(e.target.value)} /></label>
+        <label className="text-sm">Hasta<Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} /></label>
+        <label className="text-sm">Especialidad<select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={especialidad} onChange={e => { setEspecialidad(e.target.value); setDoctor("") }}><option value="">Todas</option>{(filtros?.especialidades ?? []).map(op => <option key={op.id} value={op.id}>{op.nombre}</option>)}</select></label>
+        <label className="text-sm">Doctor<select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={doctor} onChange={e => setDoctor(e.target.value)}><option value="">Todos</option>{doctores.map(op => <option key={op.id} value={op.id}>{op.nombre}</option>)}</select></label>
+        <label className="text-sm">Estado<select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={estado} onChange={e => setEstado(e.target.value)}>{ESTADOS.map(e => <option key={e} value={e}>{e || "Todos"}</option>)}</select></label>
+      </div>
+      {errorFiltros && <Alert variant="destructive"><AlertDescription>{mensajeDeError(errorFiltros)}</AlertDescription></Alert>}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={consultar} disabled={cargando || !desde || !hasta}>{cargando ? "Consultando…" : "Aplicar filtros"}</Button>
+        <Button variant="outline" onClick={() => generarPdf(true)} disabled={pdfCargando || !desde || !hasta}><EyeIcon data-icon="inline-start" />{pdfCargando ? "Generando…" : "Vista previa PDF"}</Button>
+        <Button variant="outline" onClick={() => generarPdf(false)} disabled={pdfCargando || !desde || !hasta}><DownloadIcon data-icon="inline-start" />Descargar PDF</Button>
+      </div>
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+      {pdfUrl && <iframe title="Vista previa del reporte integral" src={pdfUrl} className="h-[min(75vh,900px)] w-full rounded-lg border bg-background" />}
+    </CardContent></Card>
+    {reporte && <>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[["Citas del periodo", reporte.totalProgramadas], ["Activas", reporte.activas], ["Atendidas", reporte.atendidas], ["No asistió", reporte.noAsistio], ["Canceladas", reporte.canceladas], ["Tasa de asistencia", `${reporte.tasaAsistencia}%`]].map(([titulo, valor]) => <Card key={String(titulo)}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{titulo}</p><p className="text-2xl font-semibold">{valor}</p></CardContent></Card>)}</div>
+      <Card><CardHeader><CardTitle>Evolución {reporte.granularidad.toLowerCase()}</CardTitle></CardHeader><CardContent className="w-full overflow-x-auto"><div className="flex h-64 min-w-full items-end gap-2 border-b border-l px-3 pb-8 pt-6" role="img" aria-label={`Histograma de citas por periodo, agrupación ${reporte.granularidad.toLowerCase()}`}>
+        {reporte.evolucion.map(p => { const maximo = Math.max(1, ...reporte.evolucion.map(f => f.programadas)); const alto = p.programadas ? Math.max(4, p.programadas * 100 / maximo) : 0; return <div key={p.periodo} className="group relative flex h-full min-w-8 flex-1 flex-col justify-end" title={`${p.periodo}: ${p.programadas} citas`}><span className="mb-1 text-center text-xs tabular-nums">{p.programadas}</span><div className="w-full rounded-t bg-primary transition-colors group-hover:bg-primary/80" style={{ height: `${alto}%` }} /><span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted-foreground">{p.periodo.slice(5)}</span></div> })}
+      </div><p className="mt-3 text-xs text-muted-foreground">Cada barra representa una agrupación {reporte.granularidad.toLowerCase()} del periodo consultado.</p></CardContent></Card>
+      <Card><CardHeader><CardTitle>Citas por especialidad y estado</CardTitle></CardHeader><CardContent className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Especialidad</th><th className="p-2">Estado</th><th className="p-2">Citas</th></tr></thead><tbody>{reporte.porEspecialidad.map((f,i)=><tr key={`${f.especialidad}-${f.estado}-${i}`} className="border-t"><td className="p-2">{f.especialidad}</td><td className="p-2">{f.estado}</td><td className="p-2">{f.cantidad}</td></tr>)}</tbody></table></CardContent></Card>
+      <Card><CardHeader><CardTitle>Detalle de citas (máximo 1.000 filas)</CardTitle></CardHeader><CardContent className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Fecha", "Hora", "Especialidad", "Doctor", "Estado"].map(x=><th key={x} className="p-2">{x}</th>)}</tr></thead><tbody>{reporte.detalle.map(f=><tr key={f.idCita} className="border-t"><td className="p-2">{f.fecha}</td><td className="p-2">{f.hora}</td><td className="p-2">{f.especialidad}</td><td className="p-2">{f.doctor}</td><td className="p-2">{f.estado}</td></tr>)}</tbody></table></CardContent></Card>
+    </>}
+  </div>
 }

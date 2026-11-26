@@ -54,6 +54,17 @@ class PlantillasClinicasTest {
     }
 
     @Test
+    void reporteIntegralCitasCompilaConIndicadoresGraficasYDetalle() {
+        JasperReport reporte = GeneradorReportesSql.compilar("ReporteIntegralCitas");
+
+        assertEquals("ReporteIntegralCitas", reporte.getName());
+        assertTrue(Arrays.stream(reporte.getParameters()).anyMatch(p -> p.getName().equals("P_GRAFICO_EVOLUCION")));
+        assertTrue(Arrays.stream(reporte.getParameters()).anyMatch(p -> p.getName().equals("P_GRAFICO_ESTADOS")));
+        assertTrue(Arrays.stream(reporte.getFields()).anyMatch(f -> f.getName().equals("especialidad")));
+        assertTrue(Arrays.stream(reporte.getFields()).anyMatch(f -> f.getName().equals("estado")));
+    }
+
+    @Test
     void reportePrescripcionCompilaConSusIndicadoresYGraficos() {
         JasperReport reporte = GeneradorReportesSql.compilar("ReportePrescripcionClinica");
 

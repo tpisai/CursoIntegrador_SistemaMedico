@@ -32,7 +32,7 @@ class ReporteIntegralCitasServiceTest {
 
     @BeforeEach
     void preparar() {
-        servicio = new ReporteIntegralCitasService(adminService, repository);
+        servicio = new ReporteIntegralCitasService(adminService, repository, org.mockito.Mockito.mock(GeneradorReportesSql.class));
     }
 
     @Test
@@ -102,15 +102,18 @@ class ReporteIntegralCitasServiceTest {
         LocalDate desde = LocalDate.of(2026, 1, 1);
         LocalDate hasta = LocalDate.of(2026, 1, 31);
         when(adminService.personal(sesion)).thenReturn(null);
-        when(repository.conteoPorEstado(desde, hasta)).thenReturn(List.of());
-        when(repository.cambiosDeFecha(any(), any())).thenReturn(List.of());
-        when(repository.derivaciones(any(), any())).thenReturn(List.of());
+        when(repository.integralConteoPorEstado(desde, hasta, null, null, null)).thenReturn(List.of());
+        when(repository.integralEvolucionDiaria(desde, hasta, null, null, null)).thenReturn(List.of());
+        when(repository.integralPorEspecialidad(desde, hasta, null, null, null)).thenReturn(List.of());
+        when(repository.integralDetalle(desde, hasta, null, null, null)).thenReturn(List.of());
 
-        servicio.pdf(sesion, desde, hasta, List.of("RESUMEN"));
+        servicio.datos(sesion, desde, hasta, null, null, null);
 
-        verify(repository).conteoPorEstado(desde, hasta);
-        verify(repository).cambiosDeFecha(eq(desde.atStartOfDay()), eq(hasta.plusDays(1).atStartOfDay()));
-        verify(repository).derivaciones(eq(desde.atStartOfDay()), eq(hasta.plusDays(1).atStartOfDay()));
+        verify(repository).integralConteoPorEstado(desde, hasta, null, null, null);
+        verify(repository).integralEvolucionDiaria(desde, hasta, null, null, null);
+        verify(repository).integralPorEspecialidad(desde, hasta, null, null, null);
+        verify(repository).integralDetalle(desde, hasta, null, null, null);
+        verify(repository, never()).conteoPorEstado(any(), any());
         verify(repository, never()).conteoPorEspecialidadYEstado(any(), any());
         verify(repository, never()).doctoresConMasCitas(any(), any());
     }

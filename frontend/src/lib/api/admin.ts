@@ -9,6 +9,7 @@ import type {
   ResponderSolicitudRequest,
   SolicitudAdmin,
   TicketRecepcion,
+  ReporteIntegralCitas,
 } from "./types"
 
 // Rutas GET usadas como claves de SWR (ver src/hooks/use-admin.ts).
@@ -41,9 +42,20 @@ export function descargarReferenciaSolicitud(idSolicitud: number) {
   return requestArchivo(`/admin/solicitudes/${idSolicitud}/referencia`)
 }
 
-export function descargarReporteIntegralCitas(desde: string, hasta: string, secciones: string[]) {
+export function consultarReporteIntegralCitas(desde: string, hasta: string, idEspecialidad?: number, idDoctor?: number, estado?: string) {
   const params = new URLSearchParams({ desde, hasta })
-  secciones.forEach((seccion) => params.append("secciones", seccion))
+  if (idEspecialidad) params.set("idEspecialidad", String(idEspecialidad))
+  if (idDoctor) params.set("idDoctor", String(idDoctor))
+  if (estado) params.set("estado", estado)
+  return request<ReporteIntegralCitas>("GET", `/admin/reportes/citas-integral?${params.toString()}`)
+}
+
+export function descargarReporteIntegralCitas(desde: string, hasta: string, secciones: string[], idEspecialidad?: number, idDoctor?: number, estado?: string) {
+  const params = new URLSearchParams({ desde, hasta })
+  if (secciones.length) secciones.forEach((seccion) => params.append("secciones", seccion))
+  if (idEspecialidad) params.set("idEspecialidad", String(idEspecialidad))
+  if (idDoctor) params.set("idDoctor", String(idDoctor))
+  if (estado) params.set("estado", estado)
   return requestArchivo(`/admin/reportes/citas-integral/pdf?${params.toString()}`)
 }
 

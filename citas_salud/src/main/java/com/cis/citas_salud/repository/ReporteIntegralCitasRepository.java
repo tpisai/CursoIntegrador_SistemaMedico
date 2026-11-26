@@ -42,6 +42,69 @@ public interface ReporteIntegralCitasRepository extends Repository<Cita, Integer
     List<Object[]> doctoresConMasCitas(@Param("desde") java.time.LocalDate desde,
                                        @Param("hasta") java.time.LocalDate hasta);
 
+    @Query("""
+            select c.estado, count(c)
+            from Cita c join c.horario h join h.doctor d join d.especialidad e
+            where h.fecha between :desde and :hasta
+              and (:idEspecialidad is null or e.idEspecialidad = :idEspecialidad)
+              and (:idDoctor is null or d.idDoctor = :idDoctor)
+              and (:estado is null or c.estado = :estado)
+            group by c.estado
+            order by c.estado
+            """)
+    List<Object[]> integralConteoPorEstado(@Param("desde") java.time.LocalDate desde,
+                                           @Param("hasta") java.time.LocalDate hasta,
+                                           @Param("idEspecialidad") Integer idEspecialidad,
+                                           @Param("idDoctor") Integer idDoctor,
+                                           @Param("estado") String estado);
+
+    @Query("""
+            select h.fecha, c.estado, count(c)
+            from Cita c join c.horario h join h.doctor d join d.especialidad e
+            where h.fecha between :desde and :hasta
+              and (:idEspecialidad is null or e.idEspecialidad = :idEspecialidad)
+              and (:idDoctor is null or d.idDoctor = :idDoctor)
+              and (:estado is null or c.estado = :estado)
+            group by h.fecha, c.estado
+            order by h.fecha, c.estado
+            """)
+    List<Object[]> integralEvolucionDiaria(@Param("desde") java.time.LocalDate desde,
+                                           @Param("hasta") java.time.LocalDate hasta,
+                                           @Param("idEspecialidad") Integer idEspecialidad,
+                                           @Param("idDoctor") Integer idDoctor,
+                                           @Param("estado") String estado);
+
+    @Query("""
+            select e.nombre, c.estado, count(c)
+            from Cita c join c.horario h join h.doctor d join d.especialidad e
+            where h.fecha between :desde and :hasta
+              and (:idEspecialidad is null or e.idEspecialidad = :idEspecialidad)
+              and (:idDoctor is null or d.idDoctor = :idDoctor)
+              and (:estado is null or c.estado = :estado)
+            group by e.nombre, c.estado
+            order by e.nombre, c.estado
+            """)
+    List<Object[]> integralPorEspecialidad(@Param("desde") java.time.LocalDate desde,
+                                           @Param("hasta") java.time.LocalDate hasta,
+                                           @Param("idEspecialidad") Integer idEspecialidad,
+                                           @Param("idDoctor") Integer idDoctor,
+                                           @Param("estado") String estado);
+
+    @Query("""
+            select c.idCita, h.fecha, h.horaInicio, e.nombre, d.usuario.nombres, d.usuario.apellidos, c.estado
+            from Cita c join c.horario h join h.doctor d join d.especialidad e
+            where h.fecha between :desde and :hasta
+              and (:idEspecialidad is null or e.idEspecialidad = :idEspecialidad)
+              and (:idDoctor is null or d.idDoctor = :idDoctor)
+              and (:estado is null or c.estado = :estado)
+            order by h.fecha desc, h.horaInicio desc, c.idCita desc
+            """)
+    List<Object[]> integralDetalle(@Param("desde") java.time.LocalDate desde,
+                                  @Param("hasta") java.time.LocalDate hasta,
+                                  @Param("idEspecialidad") Integer idEspecialidad,
+                                  @Param("idDoctor") Integer idDoctor,
+                                  @Param("estado") String estado);
+
     @Query(value = """
             select coalesce(s.datos_adicionales::jsonb ->> 'decisionPaciente', 'PENDIENTE'), count(*)
             from solicitud s

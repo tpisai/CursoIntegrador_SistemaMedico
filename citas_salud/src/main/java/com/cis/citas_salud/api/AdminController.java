@@ -101,13 +101,27 @@ public class AdminController {
         return reporteService.ocupacionHorarios(sesion, desde, hasta);
     }
 
+    @GetMapping("/reportes/citas-integral")
+    public com.cis.citas_salud.api.dto.AdminDto.ReporteIntegralCitasResponse reporteIntegralCitasDatos(
+            UsuarioSesion sesion,
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor,
+            @RequestParam(value = "estado", required = false) String estado) {
+        return reporteIntegralCitasService.datos(sesion, desde, hasta, idEspecialidad, idDoctor, estado);
+    }
+
     @GetMapping("/reportes/citas-integral/pdf")
     public ResponseEntity<byte[]> reporteIntegralCitas(
             UsuarioSesion sesion,
             @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(value = "secciones", required = false) List<String> secciones) {
-        return CitaController.descarga(reporteIntegralCitasService.pdf(sesion, desde, hasta, secciones));
+            @RequestParam(value = "secciones", required = false) List<String> secciones,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor,
+            @RequestParam(value = "estado", required = false) String estado) {
+        return CitaController.descarga(reporteIntegralCitasService.pdf(sesion, desde, hasta, secciones, idEspecialidad, idDoctor, estado));
     }
 
     @GetMapping("/reportes/prescripcion")

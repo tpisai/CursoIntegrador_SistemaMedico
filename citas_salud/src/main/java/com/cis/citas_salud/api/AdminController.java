@@ -10,12 +10,14 @@ import com.cis.citas_salud.api.dto.AdminDto.ResponderSolicitudRequest;
 import com.cis.citas_salud.api.dto.AdminDto.ResumenResponse;
 import com.cis.citas_salud.api.dto.AdminDto.SolicitudAdminResponse;
 import com.cis.citas_salud.api.dto.AdminDto.TicketResponse;
+import com.cis.citas_salud.api.dto.ReportePrescripcionDto;
 import com.cis.citas_salud.api.seguridad.UsuarioSesion;
 import com.cis.citas_salud.service.AdminService;
 import com.cis.citas_salud.service.CampaniaService;
 import com.cis.citas_salud.service.RecepcionService;
 import com.cis.citas_salud.service.ReporteClinicoService;
 import com.cis.citas_salud.service.ReporteIntegralCitasService;
+import com.cis.citas_salud.service.ReportePrescripcionService;
 import com.cis.citas_salud.service.ReporteService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -45,17 +47,20 @@ public class AdminController {
     private final ReporteService reporteService;
     private final ReporteIntegralCitasService reporteIntegralCitasService;
     private final ReporteClinicoService reporteClinicoService;
+    private final ReportePrescripcionService reportePrescripcionService;
 
     public AdminController(AdminService adminService, CampaniaService campaniaService,
                            RecepcionService recepcionService, ReporteService reporteService,
                            ReporteClinicoService reporteClinicoService,
-                           ReporteIntegralCitasService reporteIntegralCitasService) {
+                           ReporteIntegralCitasService reporteIntegralCitasService,
+                           ReportePrescripcionService reportePrescripcionService) {
         this.adminService = adminService;
         this.campaniaService = campaniaService;
         this.recepcionService = recepcionService;
         this.reporteService = reporteService;
         this.reporteClinicoService = reporteClinicoService;
         this.reporteIntegralCitasService = reporteIntegralCitasService;
+        this.reportePrescripcionService = reportePrescripcionService;
     }
 
     @GetMapping("/resumen")
@@ -86,6 +91,38 @@ public class AdminController {
             @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(value = "secciones", required = false) List<String> secciones) {
         return CitaController.descarga(reporteIntegralCitasService.pdf(sesion, desde, hasta, secciones));
+    }
+
+    @GetMapping("/reportes/prescripcion")
+    public ReportePrescripcionDto.ReporteResponse reportePrescripcion(
+            UsuarioSesion sesion,
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor) {
+        return reportePrescripcionService.reporte(sesion, desde, hasta, idEspecialidad, idDoctor);
+    }
+
+    @GetMapping("/reportes/prescripcion/pdf")
+    public ResponseEntity<byte[]> reportePrescripcionPdf(
+            UsuarioSesion sesion,
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor) {
+        return CitaController.descarga(
+                reportePrescripcionService.pdf(sesion, desde, hasta, idEspecialidad, idDoctor));
+    }
+
+    @GetMapping("/reportes/prescripcion/csv")
+    public ResponseEntity<byte[]> reportePrescripcionCsv(
+            UsuarioSesion sesion,
+            @RequestParam("desde") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam("hasta") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(value = "idEspecialidad", required = false) Integer idEspecialidad,
+            @RequestParam(value = "idDoctor", required = false) Integer idDoctor) {
+        return CitaController.descarga(
+                reportePrescripcionService.csv(sesion, desde, hasta, idEspecialidad, idDoctor));
     }
 
     @GetMapping("/solicitudes")

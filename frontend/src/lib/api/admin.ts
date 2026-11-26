@@ -14,7 +14,14 @@ export const rutasAdmin = {
   resumen: "/admin/resumen",
   solicitudes: "/admin/solicitudes",
   campanias: "/admin/campanias",
-  reporteCitas: (desde: string, hasta: string) => `/admin/reportes/citas?desde=${desde}&hasta=${hasta}`,
+  filtrosReporte: "/admin/reportes/filtros",
+  reporteCitas: (desde: string, hasta: string, idEspecialidad?: number, idDoctor?: number, estado?: string) => {
+    const params = new URLSearchParams({ desde, hasta })
+    if (idEspecialidad) params.set("idEspecialidad", String(idEspecialidad))
+    if (idDoctor) params.set("idDoctor", String(idDoctor))
+    if (estado) params.set("estado", estado)
+    return `/admin/reportes/citas?${params.toString()}`
+  },
   reporteHorarios: (desde: string, hasta: string) => `/admin/reportes/horarios?desde=${desde}&hasta=${hasta}`,
 }
 

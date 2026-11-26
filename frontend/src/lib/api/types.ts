@@ -101,6 +101,9 @@ export interface Cita {
 }
 
 export interface FilaReporte {
+  // Ids de la fila: ambos null en los totales; idDoctor null en las filas por especialidad.
+  idEspecialidad: number | null
+  idDoctor: number | null
   nombre: string
   // Especialidad del doctor; vacío en las demás filas.
   detalle: string | null
@@ -119,6 +122,18 @@ export interface ReporteCitas {
   totales: FilaReporte
   porEspecialidad: FilaReporte[]
   porDoctor: FilaReporte[]
+}
+
+/** Opción de un filtro del reporte de citas. En los doctores, `detalle` es su especialidad. */
+export interface OpcionReporte {
+  id: number
+  nombre: string
+  detalle: string | null
+}
+
+export interface FiltrosReporte {
+  especialidades: OpcionReporte[]
+  doctores: OpcionReporte[]
 }
 
 export interface FilaOcupacion {

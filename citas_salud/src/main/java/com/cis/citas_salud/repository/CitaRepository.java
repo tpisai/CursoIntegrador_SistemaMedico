@@ -68,14 +68,22 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
             """)
     boolean doctorAtiendeA(@Param("doctor") Integer idDoctor, @Param("paciente") Integer idPaciente);
 
-    /** [especialidad, nombres, apellidos, estado, citas] del reporte de control. */
+    /** [idEspecialidad, especialidad, idDoctor, nombres, apellidos, estado, citas] del reporte filtrado. */
     @Query("""
-            select e.nombre, u.nombres, u.apellidos, c.estado, count(c) from Cita c
+            select e.idEspecialidad, e.nombre, d.idDoctor, u.nombres, u.apellidos, c.estado, count(c)
+            from Cita c
             join c.horario h join h.doctor d join d.especialidad e join d.usuario u
             where h.fecha between :desde and :hasta
-            group by e.nombre, u.nombres, u.apellidos, c.estado
+              and (:idEspecialidad is null or e.idEspecialidad = :idEspecialidad)
+              and (:idDoctor is null or d.idDoctor = :idDoctor)
+              and (:estado is null or c.estado = :estado)
+            group by e.idEspecialidad, e.nombre, d.idDoctor, u.nombres, u.apellidos, c.estado
             """)
-    List<Object[]> conteoParaReporte(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+    List<Object[]> conteoParaReporte(@Param("desde") LocalDate desde,
+                                     @Param("hasta") LocalDate hasta,
+                                     @Param("idEspecialidad") Integer idEspecialidad,
+                                     @Param("idDoctor") Integer idDoctor,
+                                     @Param("estado") String estado);
 
     // Indicadores del panel de administración.
     @Query("select count(c) from Cita c where c.estado in :estados and c.horario.fecha between :desde and :hasta")
@@ -83,3 +91,4 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
                      @Param("desde") LocalDate desde,
                      @Param("hasta") LocalDate hasta);
 }
+

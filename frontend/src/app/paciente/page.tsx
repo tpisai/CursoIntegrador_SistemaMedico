@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 
 import { ProximaCita } from "@/components/citas/proxima-cita"
+import { EspecialidadesDestacadas, NovedadesInicio } from "@/components/paciente/inicio-destacados"
 import { Saludo } from "@/components/portal/saludo"
 import { type Acceso, BannerAyuda, TarjetasAcceso, TituloPortal } from "@/components/portal/tarjetas-acceso"
 
@@ -51,8 +52,8 @@ const ACCESOS: Acceso[] = [
   },
   {
     href: "/paciente/comunicacion",
-    titulo: "Campañas de salud",
-    texto: "Inscríbete en las campañas gratuitas para la comunidad.",
+    titulo: "Campañas y eventos",
+    texto: "Inscríbete en campañas gratuitas y entérate de los próximos eventos.",
     boton: "Ver campañas",
     Icono: MegaphoneIcon,
     color: "violeta",
@@ -79,7 +80,9 @@ export default function InicioPacientePage() {
         }
       />
       <ProximaCita />
+      <NovedadesInicio />
       <TarjetasAcceso accesos={ACCESOS} />
+      <EspecialidadesDestacadas />
       <BannerAyuda href="/paciente/ayuda" />
     </>
   )

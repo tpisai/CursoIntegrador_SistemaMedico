@@ -10,6 +10,8 @@ import com.cis.citas_salud.entity.Cita;
 import com.cis.citas_salud.entity.Horario;
 import com.cis.citas_salud.repository.CitaRepository;
 import com.cis.citas_salud.repository.HorarioRepository;
+import com.cis.citas_salud.repository.DoctorRepository;
+import com.cis.citas_salud.repository.EspecialidadRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +26,7 @@ import static com.cis.citas_salud.service.DatosPrueba.exigeError;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -40,21 +43,27 @@ class ReporteServiceTest {
     private CitaRepository citaRepository;
     @Mock
     private HorarioRepository horarioRepository;
+    @Mock
+    private DoctorRepository doctorRepository;
+    @Mock
+    private EspecialidadRepository especialidadRepository;
 
     private ReporteService servicio;
     private final UsuarioSesion sesion = new UsuarioSesion(1, UsuarioSesion.ADMINISTRADOR);
 
     @BeforeEach
     void preparar() {
-        servicio = new ReporteService(adminService, citaRepository, horarioRepository);
+        servicio = new ReporteService(adminService, citaRepository, horarioRepository, doctorRepository, especialidadRepository);
     }
 
     private static Object[] fila(String especialidad, String nombres, String apellidos, String estado, long citas) {
-        return new Object[] {especialidad, nombres, apellidos, estado, citas};
+        int idEspecialidad = "Pediatría".equals(especialidad) ? 1 : 2;
+        int idDoctor = "Patricia".equals(nombres) ? 10 : "Jorge".equals(nombres) ? 11 : 12;
+        return new Object[] {idEspecialidad, especialidad, idDoctor, nombres, apellidos, estado, citas};
     }
 
     private void hayCitas(Object[]... filas) {
-        when(citaRepository.conteoParaReporte(DESDE, HASTA)).thenReturn(List.of(filas));
+        when(citaRepository.conteoParaReporte(DESDE, HASTA, null, null, null)).thenReturn(List.of(filas));
     }
 
     @Test
@@ -101,6 +110,27 @@ class ReporteServiceTest {
     }
 
     @Test
+    void aplicaLosFiltrosDeEspecialidadDoctorYEstadoEnElRepositorio() {
+        Object[] resultado = fila("Nutrición", "Josué", "Cóndor Quispe", Cita.ATENDIDA, 2);
+        when(citaRepository.conteoParaReporte(DESDE, HASTA, 2, 12, Cita.ATENDIDA))
+                .thenReturn(List.of(resultado));
+
+        ReporteResponse reporte = servicio.citas(sesion, DESDE, HASTA, 2, 12, Cita.ATENDIDA);
+
+        assertEquals(2, reporte.totales().total());
+        assertEquals("Josué Cóndor Quispe", reporte.porDoctor().get(0).nombre());
+        verify(citaRepository).conteoParaReporte(DESDE, HASTA, 2, 12, Cita.ATENDIDA);
+    }
+
+    @Test
+    void estadoNoPermitidoResponde400SinConsultarElRepositorio() {
+        exigeError(HttpStatus.BAD_REQUEST,
+                () -> servicio.citas(sesion, DESDE, HASTA, null, null, "ESTADO_INVALIDO"));
+
+        verifyNoInteractions(citaRepository);
+    }
+
+    @Test
     void sinCitasElAusentismoEsCero() {
         hayCitas();
 
@@ -114,7 +144,7 @@ class ReporteServiceTest {
     @Test
     void sinFechasUsaElMesEnCurso() {
         LocalDate hoy = LocalDate.now();
-        when(citaRepository.conteoParaReporte(any(), any())).thenReturn(List.of());
+        when(citaRepository.conteoParaReporte(any(), any(), any(), any(), any())).thenReturn(List.of());
 
         ReporteResponse reporte = servicio.citas(sesion, null, null);
 

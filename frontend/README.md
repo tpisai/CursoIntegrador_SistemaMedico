@@ -292,7 +292,8 @@ Base `/api`. JSON en camelCase, fechas `"YYYY-MM-DD"` y horas `"HH:mm"`. Las rut
 | `GET`   | `/doctor/atenciones/{id}/referencia`                                | PDF de la referencia a otro establecimiento. 409 si la cita no tiene solicitud de derivación |
 | `GET`   | `/doctor/citas/{id}/fichas-consulta`                                | PDF con todas las fichas de consulta del paciente de una cita propia |
 | `GET`   | `/admin/resumen`                                                    | Citas de hoy, solicitudes pendientes, campañas vigentes, ausentismo del mes |
-| `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`           | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso |
+| `GET`   | `/admin/reportes/citas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...&estado=...` | Citas y ausentismo por especialidad y doctor. Sin fechas, el mes en curso. Los tres filtros son opcionales; `estado` es un estado de cita (400 si no existe) |
+| `GET`   | `/admin/reportes/filtros`                                           | Opciones de los filtros: especialidades y doctores activos (`detalle` del doctor = su especialidad) |
 | `GET`   | `/admin/reportes/horarios?desde=YYYY-MM-DD&hasta=YYYY-MM-DD`        | Capacidad y ocupación de horarios por especialidad y doctor |
 | `GET`   | `/admin/reportes/citas-integral/pdf?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&secciones=...` | PDF administrativo con gráficos y hasta cinco consultas; las secciones se filtran con `RESUMEN`, `ESPECIALIDAD`, `DOCTORES`, `CAMBIOS`, `DERIVACIONES` |
 | `GET`   | `/admin/reportes/prescripcion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&idEspecialidad=...&idDoctor=...` | JSON de indicadores, medicamentos, diagnósticos, recetas por médico y tendencia semanal; especialidad y médico son opcionales |

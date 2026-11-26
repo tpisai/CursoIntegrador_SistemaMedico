@@ -18,6 +18,8 @@ public final class AdminDto {
 
     // Reporte de control (EDT 4.8).
     public record FilaReporte(
+            Integer idEspecialidad,
+            Integer idDoctor,
             String nombre,
             // Especialidad del doctor; vacío en las demás filas.
             String detalle,
@@ -36,6 +38,14 @@ public final class AdminDto {
             FilaReporte totales,
             List<FilaReporte> porEspecialidad,
             List<FilaReporte> porDoctor) {
+    }
+
+    public record OpcionReporte(Integer id, String nombre, String detalle) {
+    }
+
+    public record FiltrosReporteResponse(
+            List<OpcionReporte> especialidades,
+            List<OpcionReporte> doctores) {
     }
 
     // Consulta administrativa de capacidad y ocupación de horarios ofertados.
